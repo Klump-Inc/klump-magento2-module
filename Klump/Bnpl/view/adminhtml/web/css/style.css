@@ -1,0 +1,15 @@
+.klump-block .button {
+  float: right;
+}
+
+.klump-section .klump-block .button:before {
+  content: 'Configure';
+}
+
+.klump-section.active .klump-block .button:before {
+  content: 'Close';
+}
+
+.klump-section .heading {
+  background: url('../images/klump.png') no-repeat 0 50% / 18rem auto; padding-left: 20rem;
+}

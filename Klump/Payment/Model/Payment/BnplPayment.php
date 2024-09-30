@@ -7,7 +7,7 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
     const CODE = 'bnpl';
     protected $_code = self::CODE;
 
-    protected $_isOffline = false;
+    protected $_isOffline = true;
 
     public function isAvailable(
         \Magento\Quote\Api\Data\CartInterface $quote = null

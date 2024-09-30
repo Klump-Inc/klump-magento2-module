@@ -2,7 +2,7 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
         <section id="payment" showInDefault="1" showInStore="1" showInWebsite="1" sortOrder="1" translate="label">
-            <group id="klump_bnpl" translate="label" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+            <group id="klump" translate="label" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Klump BNPL</label>
                 <comment>
                     <![CDATA[Klump BNPL allows your customers to pay in installments for products and services while you receive the full payment immediately. <br/> <br/> <a href="https://merchant.useklump.com/signup" target="_blank">Click here to sign up on Klump</a>]]>

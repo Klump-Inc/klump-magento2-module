@@ -14,11 +14,4 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
     ) {
         return parent::isAvailable($quote);
     }
-
-//    public function authorize(\Magento\Payment\Model\InfoInterface $payment, $amount)
-//    {
-//        $this->logger->debug(['Authorization process started for amount: ' . $amount]);
-//
-//        return $this;
-//    }
 }

@@ -4,6 +4,7 @@ define(
         'Magento_Checkout/js/view/payment/default',
         "Magento_Checkout/js/action/place-order",
         'Magento_Checkout/js/model/payment/additional-validators',
+        "Magento_Checkout/js/model/quote",
         "Magento_Checkout/js/model/full-screen-loader",
         "Magento_Checkout/js/action/redirect-on-success",
     ],
@@ -21,35 +22,26 @@ define(
         return Component.extend({
             defaults: {
                 template: 'Klump_Payment/payment/bnpl',
-                // transactionResult: '',
-                // customObserverName: null
             },
 
             redirectAfterPlaceOrder: false,
 
             initialize: function () {
                 this._super();
-                console.log('this is called.5')
-                this.loadExternalScript('https://staging-js.useklump.com/klump.js');
-                console.log('isChecked()', this.isChecked())
 
+                $("head").append('<script src="https://staging-js.useklump.com/klump.js">');
                 return this;
             },
 
-            loadExternalScript: function (url) {
-                var script = document.createElement('script');
-                script.type = 'text/javascript';
-                script.src = url;
-                document.head.appendChild(script);
-            },
-
             isActive: function () {
-                console.log('isChecked()', this.isChecked())
                 return true;
             },
 
+            getCode: function() {
+                return "bnpl";
+            },
+
             placeOrder: function () {
-                console.log('this is called, yearhu : placeOrder')
                 if (this.validate()) {
                     this._super();
                 }
@@ -57,14 +49,10 @@ define(
             },
 
             afterPlaceOrder: function () {
-                console.log('this is called, yeah : afterPlaceOrder')
                 var checkoutConfig = window.checkoutConfig;
-                console.log('checkoutConfig', checkoutConfig);
                 var paymentData = quote.billingAddress();
-
-                console.log('paymentData', paymentData);
-
                 var klumpConfig = checkoutConfig.payment.bnpl;
+
                 console.log('klumpConfig', klumpConfig);
 
                 if (checkoutConfig.isCustomerLoggedIn) {
@@ -78,14 +66,23 @@ define(
 
                 var _this = this;
                 _this.isPlaceOrderActionAllowed(false);
-                var klumpInstance = new Klump({
+
+                if (Klump === 'undefined') {
+                    console.log('Klump is undefined');
+                    return;
+                }
+                const payload = {
                     publicKey: klumpConfig.public_key,
                     data: {
                         amount: parseFloat(quote.totals().grand_total, 10),
                         currency: checkoutConfig.totalsData.quote_currency_code,
                         phone: paymentData.telephone,
                         email: paymentData.email,
-                        merchant_reference: paymentData.id,
+                        // merchant_reference: paymentData.id,
+                        // shipping_fee: 100,
+                        // first_name: 'John',
+                        // last_name: 'Doe',
+                        redirect_url: 'https://verygoodmerchant.com/checkout/confirmation',
                         meta_data: {
                             order_id: quoteId,
                             custom_fields: [
@@ -116,23 +113,36 @@ define(
                                 }
                             ]
                         },
-                        // items: klp_payment_params.order_items,
-                        // redirect_url: klp_payment_params.cb_url,
+                        items: [
+                            // {
+                            //     image_url:
+                            //         'https://s3.amazonaws.com/uifaces/faces/twitter/ladylexy/128.jpg',
+                            //     item_url: 'https://www.paypal.com/in/webapps/mpp/home',
+                            //     name: 'Awesome item',
+                            //     unit_price: 2000,
+                            //     quantity: 2,
+                            // }
+                        ]
                     },
                     onSuccess: (data) => {
-                        _this.isPlaceOrderActionAllowed(true);
+                        console.log('html onSuccess will be handled by the merchant', data);
                         return data;
                     },
                     onError: (data) => {
-                        console.error('Klump Gateway Error has occurred.')
+                        console.log('html onError will be handled by the merchant', data);
                     },
                     onLoad: (data) => {
+                        console.log('html onLoad will be handled by the merchant', data);
                     },
                     onOpen: (data) => {
+                        console.log('html OnOpen will be handled by the merchant', data);
                     },
                     onClose: (data) => {
+                        console.log('html onClose will be handled by the merchant', data);
                     }
-                });
+                }
+
+                var klump = new Klump(payload);
             }
         });
     }

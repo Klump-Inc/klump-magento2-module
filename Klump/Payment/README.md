@@ -23,6 +23,7 @@ When enabled, navigate to *Magento Admin* under `Stores/Configuration/Sales/Paym
 bin/magento setup:di:compile
 bin/magento cache:clean
 bin/magento cache:flush
+bin/magento setup:static-content:deploy -f
 bin/magento indexer:reindex
 ```
 

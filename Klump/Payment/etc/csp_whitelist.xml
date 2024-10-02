@@ -3,7 +3,7 @@
     <policies>
         <policy id="script-src">
             <values>
-                <value id="cdnjs-cloudflare" type="host">https://staging-js.useklump.com</value>
+                <value id="klumpjs" type="host">https://staging-js.useklump.com</value>
             </values>
         </policy>
     </policies>

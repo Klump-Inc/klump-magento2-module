@@ -29,7 +29,24 @@ define(
             initialize: function () {
                 this._super();
 
-                $("head").append('<script src="https://staging-js.useklump.com/klump.js">');
+                let klumpCheckout = document.getElementById('klump__checkout');
+
+                if (!klumpCheckout) {
+                    klumpCheckout = document.createElement('div');
+                    klumpCheckout.id = 'klump__checkout';
+                    document.body.appendChild(klumpCheckout);
+                }
+
+                let script = document.createElement('script');
+                script.src = "https://staging-js.useklump.com/klump.js";
+                script.onload = function() {
+                    console.log('Klump script loaded successfully.');
+                };
+                script.onerror = function() {
+                    console.error('Failed to load Klump script.');
+                };
+                document.head.appendChild(script);
+
                 return this;
             },
 
@@ -55,6 +72,9 @@ define(
 
                 console.log('klumpConfig', klumpConfig);
 
+                // Base URL for constructing item URLs and image URLs
+                var baseUrl = window.location.origin;
+
                 if (checkoutConfig.isCustomerLoggedIn) {
                     var customerData = checkoutConfig.customerData;
                     paymentData.email = customerData.email;
@@ -68,15 +88,44 @@ define(
                 _this.isPlaceOrderActionAllowed(false);
 
                 if (Klump === 'undefined') {
-                    console.log('Klump is undefined');
+                    console.error('Klump is undefined');
                     return;
                 }
+
+                // Fetching cart items
+                var cartItems = quote.getItems();
+                if (!cartItems.length) {
+                    console.error('Cart is empty');
+                    return;
+                }
+
+                // Constructing items array for Klump
+                var items = cartItems.map(function(item) {
+                    return {
+                        name: item.name,
+                        unit_price: parseFloat(item.price) - parseFloat(item.discount_amount), // Ensure correct price attribute according to your Magento setup
+                        quantity: item.qty,
+                        image_url: item.thumbnail,
+                        item_url: baseUrl + item.product.request_path,
+                    };
+                });
+
+                let phone;
+
+                if (paymentData.telephone) {
+                    if (paymentData.telephone.length > 11) {
+                        phone = '0' + paymentData.telephone.substring(paymentData.telephone.length - 10);
+                    } else {
+                        phone = paymentData.telephone;
+                    }
+                }
+
                 const payload = {
                     publicKey: klumpConfig.public_key,
                     data: {
                         amount: parseFloat(quote.totals().grand_total, 10),
                         currency: checkoutConfig.totalsData.quote_currency_code,
-                        phone: paymentData.telephone,
+                        phone: phone,
                         email: paymentData.email,
                         // merchant_reference: paymentData.id,
                         // shipping_fee: 100,
@@ -113,23 +162,14 @@ define(
                                 }
                             ]
                         },
-                        items: [
-                            // {
-                            //     image_url:
-                            //         'https://s3.amazonaws.com/uifaces/faces/twitter/ladylexy/128.jpg',
-                            //     item_url: 'https://www.paypal.com/in/webapps/mpp/home',
-                            //     name: 'Awesome item',
-                            //     unit_price: 2000,
-                            //     quantity: 2,
-                            // }
-                        ]
+                        items: items
                     },
                     onSuccess: (data) => {
                         console.log('html onSuccess will be handled by the merchant', data);
                         return data;
                     },
                     onError: (data) => {
-                        console.log('html onError will be handled by the merchant', data);
+                        console.error('html onError will be handled by the merchant', data);
                     },
                     onLoad: (data) => {
                         console.log('html onLoad will be handled by the merchant', data);
@@ -142,7 +182,13 @@ define(
                     }
                 }
 
-                var klump = new Klump(payload);
+                try {
+                    console.log('Initializing Klump with payload:', payload);
+                    new Klump(payload);
+                    console.log('Klump initialized successfully.');
+                } catch (error) {
+                    console.error('Klump initialization error:', error);
+                }
             }
         });
     }

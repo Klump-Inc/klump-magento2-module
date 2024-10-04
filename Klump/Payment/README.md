@@ -6,8 +6,8 @@ Klump BNPL payment gateway Magento2 module
 
 *  Click the Download Zip button and save to your system.
 *  Unzip the archived file.
-*  Create a __Klump/Bnpl__ folder in your Magento project's __app/code__ directory.
-*  Move the unzipped files into your project's __app/code/Klump/Bnpl__ directory.
+*  Create a __Klump/Payment__ folder in your Magento project's __app/code__ directory.
+*  Move the unzipped files into your project's __app/code/Klump/Payment__ directory.
 
 ### To enable the module:
 From your command line, in your magento root directory, run

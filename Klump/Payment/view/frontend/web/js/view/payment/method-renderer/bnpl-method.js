@@ -82,15 +82,19 @@ define(
                     paymentData.email = quote.guestEmail;
                 }
 
-                var quoteId = checkoutConfig.quoteItemData[0].quote_id;
+                console.log('quoteData', checkoutConfig)
+
+                // var orderId = checkoutConfig.quoteData.entity_id
 
                 var _this = this;
                 _this.isPlaceOrderActionAllowed(false);
 
-                if (Klump === 'undefined') {
+                if (typeof Klump === 'undefined') {
                     console.error('Klump is undefined');
                     return;
                 }
+
+                var quoteId = checkoutConfig.quoteItemData[0].quote_id // quote.getQuoteId()[0];
 
                 // Fetching cart items
                 var cartItems = quote.getItems();
@@ -103,7 +107,7 @@ define(
                 var items = cartItems.map(function(item) {
                     return {
                         name: item.name,
-                        unit_price: parseFloat(item.price) - parseFloat(item.discount_amount), // Ensure correct price attribute according to your Magento setup
+                        unit_price: (parseFloat(item.row_total_incl_tax) - parseFloat(item.discount_amount)) / item.qty, // Ensure correct price attribute according to your Magento setup
                         quantity: item.qty,
                         image_url: item.thumbnail,
                         item_url: baseUrl + item.product.request_path,
@@ -127,13 +131,13 @@ define(
                         currency: checkoutConfig.totalsData.quote_currency_code,
                         phone: phone,
                         email: paymentData.email,
-                        // merchant_reference: paymentData.id,
+                        // merchant_reference: orderId,
                         // shipping_fee: 100,
                         // first_name: 'John',
                         // last_name: 'Doe',
                         redirect_url: 'https://verygoodmerchant.com/checkout/confirmation',
                         meta_data: {
-                            order_id: quoteId,
+                            quote_id: quoteId,
                             custom_fields: [
                                 {
                                     display_name: "QuoteId",
@@ -166,7 +170,14 @@ define(
                     },
                     onSuccess: (data) => {
                         console.log('html onSuccess will be handled by the merchant', data);
-                        return data;
+                        // return data;
+                        // Ensure to redirect or clear actions post order if needed
+                        fullScreenLoader.stopLoader();
+                        _this.isPlaceOrderActionAllowed(true);
+                        _this.messageContainer.addErrorMessage({
+                            message: "Error, please try again"
+                        });
+                        // redirectOnSuccessAction.execute();
                     },
                     onError: (data) => {
                         console.error('html onError will be handled by the merchant', data);

@@ -1,6 +1,6 @@
 <?php
 
-namespace Klump\Payment\Model\Payment;
+namespace Klump\Payment\Model;
 
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Payment\Model\InfoInterface;

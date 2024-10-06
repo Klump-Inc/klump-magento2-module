@@ -2,7 +2,8 @@
 
 namespace Klump\Payment\Controller\Payment;
 
-use Klump\Payment\Helper\Data as PaymentHelper;
+//use Klump\Payment\Helper\Data as PaymentHelper;
+use Klump\Payment\Model\Ui\ConfigProvider;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\CsrfAwareActionInterface;
@@ -10,6 +11,9 @@ use Magento\Framework\App\Request\InvalidRequestException;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\App\Request\Http;
+use Magento\Sales\Api\Data\OrderInterface;
+use Magento\Sales\Model\Order;
+use Magento\Sales\Model\Order\Email\Sender\OrderSender;
 use Magento\Sales\Model\OrderRepository;
 use Psr\Log\LoggerInterface;
 
@@ -18,22 +22,31 @@ class Webhook extends Action implements CsrfAwareActionInterface
     protected $resultJsonFactory;
     protected $request;
     protected $logger;
+    protected $configProvider;
     protected $orderRepository;
-    protected $paymentHelper;
+//    protected $paymentHelper;
+    protected $orderInterface;
+    protected $orderSender;
 
     public function __construct(
         Context $context,
         JsonFactory $resultJsonFactory,
         Http $request,
         LoggerInterface $logger,
+        ConfigProvider $configProvider,
         OrderRepository $orderRepository,
-        PaymentHelper $paymentHelper,
+        OrderInterface $orderInterface,
+//        PaymentHelper $paymentHelper,
+        OrderSender $orderSender
     ) {
         $this->resultJsonFactory = $resultJsonFactory;
         $this->request = $request;
         $this->logger = $logger;
+        $this->configProvider = $configProvider;
         $this->orderRepository = $orderRepository;
-        $this->paymentHelper = $paymentHelper;
+        $this->orderInterface = $orderInterface;
+//        $this->paymentHelper = $paymentHelper;
+        $this->orderSender = $orderSender;
         parent::__construct($context);
     }
 
@@ -41,9 +54,7 @@ class Webhook extends Action implements CsrfAwareActionInterface
     {
         $resultJson = $this->resultJsonFactory->create();
         $data = $this->getRequest()->getContent();
-
-        // Fetch the X-Klump-Signature header
-        $signature = $this->getRequest()->getHeader('X-Klump-Signature');
+        $signature = $this->getRequest()->getHeader('X-Klump-Signature'); // Fetch the X-Klump-Signature header
 
         // Verify the received X-Klump-Signature
         if (!$this->verifySignature($data, $signature)) {
@@ -57,23 +68,50 @@ class Webhook extends Action implements CsrfAwareActionInterface
                 throw new \Exception('Invalid JSON data');
             }
 
-            $orderId = $webhookData['order_id'] ?? null;
-            $transactionStatus = $webhookData['status'] ?? null;
+            // @todo call Klump tnx api to verify transaction status
 
-            if (!$orderId || !$transactionStatus) {
-                throw new \Exception('Missing order_id or status in webhook data');
+            $this->logger->info('webhook data', ['payload' => $webhookData]);
+
+            if ($webhookData['event'] !== 'klump.payment.transaction.successful') {
+                return $resultJson->setData(['success' => false, 'message' => 'Invalid event']);
             }
 
-            // Load the order by incremental id
-            $order = $this->orderRepository->get($orderId);
+            $data = $webhookData['data'];
+
+            $quoteId = $data['meta_data']['quote_id'] ?? null;
+
+            if (!$quoteId) {
+                return $resultJson->setData(['success' => false, 'message' => 'Missing quote_id in webhook data']);
+            }
+
+            $this->logger->info('order data', ['quoteId' => $quoteId]);
+
+            $order = $this->orderInterface->loadByIncrementId($quoteId);
+
+            if (!$order->getId()) {
+                $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+                $searchCriteriaBuilder = $objectManager->create('Magento\Framework\Api\SearchCriteriaBuilder');
+                $searchCriteria = $searchCriteriaBuilder->addFilter('quote_id', $quoteId, 'eq')->create();
+                $items = $this->orderRepository->getList($searchCriteria);
+                if($items->getTotalCount() == 1){
+                    $order = $items->getFirstItem();
+                }
+            }
 
             if (!$order->getId()) {
                 throw new \Exception('Order not found');
             }
 
-            // Update the order status
-            $order->setStatus($transactionStatus);
-            $this->orderRepository->save($order);
+            if ($order->getStatus() == "pending") {
+                // sets the status to processing since payment has been received
+                $order->setState(Order::STATE_PROCESSING)
+                    ->addStatusToHistory(Order::STATE_PROCESSING, __("Klump BNPL Payment Verified and Order is being processed"), true)
+                    ->setCanSendNewEmailFlag(true)
+                    ->setCustomerNoteNotify(true);
+                $this->orderRepository->save($order);
+
+                $this->orderSender->send($order, true);
+            }
 
             // Log the webhook data
             $this->logger->info('Webhook received', $webhookData);
@@ -94,10 +132,10 @@ class Webhook extends Action implements CsrfAwareActionInterface
      */
     protected function verifySignature(string $data, ?string $signature): bool
     {
-        $secret = $this->paymentHelper->getSecretKey();
-        $this->logger->debug('Webhook $secret: ' . $secret);
+        $secret = $this->configProvider->getSecretKey();
+//        $this->paymentHelper->getSecretKey();
         if (!$secret) return false;
-        $expectedSignature = hash_hmac('sha256', $data, $secret);
+        $expectedSignature = hash_hmac('sha512', $data, $secret);
         return hash_equals($expectedSignature, $signature);
     }
 

@@ -3,19 +3,24 @@
 namespace Klump\Payment\Model\Ui;
 
 use Magento\Checkout\Model\ConfigProviderInterface;
+use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Payment\Helper\Data as PaymentHelper;
 use Magento\Store\Model\Store as Store;
 
 class ConfigProvider implements ConfigProviderInterface
 {
+    protected $checkoutSession;
     protected $method;
     protected $store;
 
     public function __construct(
-        PaymentHelper $paymentHelper, Store $store
+        CheckoutSession $checkoutSession,
+        PaymentHelper $paymentHelper,
+        Store $store
     )
     {
-        $this->method = $paymentHelper->getMethodInstance(\Klump\Payment\Model\Payment\BnplPayment::CODE);
+        $this->method = $paymentHelper->getMethodInstance(\Klump\Payment\Model\BnplPayment::CODE);
+        $this->checkoutSession = $checkoutSession;
         $this->store = $store;
     }
 
@@ -26,17 +31,15 @@ class ConfigProvider implements ConfigProviderInterface
      */
     public function getConfig()
     {
-        $publicKey = $this->method->getConfigData('live_public_key');
-        if ($this->method->getConfigData('test_mode')) {
-            $publicKey = $this->method->getConfigData('test_public_key');
-        }
-
         return [
             'payment' => [
-                \Klump\Payment\Model\Payment\BnplPayment::CODE => [
-                    'public_key' => $publicKey,
+                \Klump\Payment\Model\BnplPayment::CODE => [
+                    'public_key' => $this->getPublicKey(),
                 ]
-            ]
+            ],
+            'quoteData' => [
+                'entity_id' => $this->checkoutSession->getQuote()->getId()
+            ],
         ];
     }
 
@@ -47,22 +50,14 @@ class ConfigProvider implements ConfigProviderInterface
     /**
      * Get secret key for webhook process
      *
-     * @return array
+     * @return string
      */
-    public function getSecretKeyArray(){
-        $data = ["live" => $this->method->getConfigData('live_secret_key')];
-        if ($this->method->getConfigData('test_mode')) {
-            $data = ["test" => $this->method->getConfigData('test_secret_key')];
-        }
-
-        return $data;
+    public function getSecretKey()
+    {
+        return $this->method->getConfigData('test_mode') ? $this->method->getConfigData('test_secret_key') : $this->method->getConfigData('secret_key');
     }
 
     public function getPublicKey(){
-        $publicKey = $this->method->getConfigData('live_public_key');
-        if ($this->method->getConfigData('test_mode')) {
-            $publicKey = $this->method->getConfigData('test_public_key');
-        }
-        return $publicKey;
+        return $this->method->getConfigData('test_mode') ? $this->method->getConfigData('test_public_key') : $this->method->getConfigData('public_key');
     }
 }

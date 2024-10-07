@@ -37,9 +37,9 @@ class ConfigProvider implements ConfigProviderInterface
                     'public_key' => $this->getPublicKey(),
                 ]
             ],
-            'quoteData' => [
-                'entity_id' => $this->checkoutSession->getQuote()->getId()
-            ],
+//            'quoteData' => [
+//                'entity_id' => $this->checkoutSession->getQuote()->getId()
+//            ],
         ];
     }
 

@@ -15,7 +15,7 @@ define(
         additionalValidators,
         quote,
         fullScreenLoader,
-        redirectOnSuccessAction
+        redirectOnSuccessAction,
     ) {
         'use strict';
 
@@ -75,19 +75,16 @@ define(
                 // Base URL for constructing item URLs and image URLs
                 var baseUrl = window.location.origin;
 
+                var customerData;
                 if (checkoutConfig.isCustomerLoggedIn) {
-                    var customerData = checkoutConfig.customerData;
+                    customerData = checkoutConfig.customerData;
                     paymentData.email = customerData.email;
                 } else {
                     paymentData.email = quote.guestEmail;
                 }
 
-                console.log('quoteData', checkoutConfig)
-
-                // var orderId = checkoutConfig.quoteData.entity_id
-
+                this.isPlaceOrderActionAllowed(false);
                 var _this = this;
-                _this.isPlaceOrderActionAllowed(false);
 
                 if (typeof Klump === 'undefined') {
                     console.error('Klump is undefined');
@@ -95,6 +92,9 @@ define(
                 }
 
                 var quoteId = checkoutConfig.quoteItemData[0].quote_id // quote.getQuoteId()[0];
+
+                // Fetching shipping cost
+                var shippingCost = quote.shippingMethod().amount;
 
                 // Fetching cart items
                 var cartItems = quote.getItems();
@@ -114,28 +114,15 @@ define(
                     };
                 });
 
-                let phone;
-
-                if (paymentData.telephone) {
-                    if (paymentData.telephone.length > 11) {
-                        phone = '0' + paymentData.telephone.substring(paymentData.telephone.length - 10);
-                    } else {
-                        phone = paymentData.telephone;
-                    }
-                }
-
                 const payload = {
                     publicKey: klumpConfig.public_key,
                     data: {
                         amount: parseFloat(quote.totals().grand_total, 10),
                         currency: checkoutConfig.totalsData.quote_currency_code,
-                        phone: phone,
                         email: paymentData.email,
                         // merchant_reference: orderId,
-                        // shipping_fee: 100,
-                        // first_name: 'John',
-                        // last_name: 'Doe',
-                        redirect_url: 'https://verygoodmerchant.com/checkout/confirmation',
+                        shipping_fee: shippingCost,
+                        redirect_url: baseUrl + '/checkout/#confirmation',
                         meta_data: {
                             quote_id: quoteId,
                             custom_fields: [
@@ -169,28 +156,45 @@ define(
                         items: items
                     },
                     onSuccess: (data) => {
-                        console.log('html onSuccess will be handled by the merchant', data);
-                        // return data;
-                        // Ensure to redirect or clear actions post order if needed
-                        fullScreenLoader.stopLoader();
+                        console.log(data);
                         _this.isPlaceOrderActionAllowed(true);
+                        redirectOnSuccessAction.execute();
+                    },
+                    onError: (data) => {
+                        console.error(data);
+                        console.error('error occurred');
                         _this.messageContainer.addErrorMessage({
                             message: "Error, please try again"
                         });
-                        // redirectOnSuccessAction.execute();
-                    },
-                    onError: (data) => {
-                        console.error('html onError will be handled by the merchant', data);
+                        fullScreenLoader.stopLoader();
                     },
                     onLoad: (data) => {
-                        console.log('html onLoad will be handled by the merchant', data);
+                        console.log('html onLoad will be handled by the merchant');
+                        console.log(data);
                     },
                     onOpen: (data) => {
                         console.log('html OnOpen will be handled by the merchant', data);
                     },
                     onClose: (data) => {
                         console.log('html onClose will be handled by the merchant', data);
+                        fullScreenLoader.stopLoader();
                     }
+                }
+
+                if (paymentData.telephone) {
+                    if (paymentData.telephone.length > 11) {
+                        payload.data.phone = '0' + paymentData.telephone.substring(paymentData.telephone.length - 10);
+                    } else {
+                        payload.data.phone = paymentData.telephone;
+                    }
+                }
+
+                if (customerData.firstname) {
+                    payload.data.first_name = customerData.firstname;
+                }
+
+                if (customerData.lastname) {
+                    payload.data.last_name = customerData.lastname;
                 }
 
                 try {

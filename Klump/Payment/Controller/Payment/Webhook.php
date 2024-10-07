@@ -2,8 +2,8 @@
 
 namespace Klump\Payment\Controller\Payment;
 
-//use Klump\Payment\Helper\Data as PaymentHelper;
 use Klump\Payment\Model\Ui\ConfigProvider;
+use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\CsrfAwareActionInterface;
@@ -24,9 +24,9 @@ class Webhook extends Action implements CsrfAwareActionInterface
     protected $logger;
     protected $configProvider;
     protected $orderRepository;
-//    protected $paymentHelper;
     protected $orderInterface;
     protected $orderSender;
+    private $searchCriteriaBuilder;
 
     public function __construct(
         Context $context,
@@ -36,18 +36,18 @@ class Webhook extends Action implements CsrfAwareActionInterface
         ConfigProvider $configProvider,
         OrderRepository $orderRepository,
         OrderInterface $orderInterface,
-//        PaymentHelper $paymentHelper,
-        OrderSender $orderSender
+        OrderSender $orderSender,
+        SearchCriteriaBuilder $searchCriteriaBuilder,
     ) {
+        parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
         $this->request = $request;
         $this->logger = $logger;
         $this->configProvider = $configProvider;
         $this->orderRepository = $orderRepository;
         $this->orderInterface = $orderInterface;
-//        $this->paymentHelper = $paymentHelper;
         $this->orderSender = $orderSender;
-        parent::__construct($context);
+        $this->searchCriteriaBuilder = $searchCriteriaBuilder;
     }
 
     public function execute()
@@ -63,44 +63,15 @@ class Webhook extends Action implements CsrfAwareActionInterface
         }
 
         try {
-            $webhookData = json_decode($data, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Invalid JSON data');
-            }
-
-            // @todo call Klump tnx api to verify transaction status
-
-            $this->logger->info('webhook data', ['payload' => $webhookData]);
+            $webhookData = $this->validateWebhookData($data);
 
             if ($webhookData['event'] !== 'klump.payment.transaction.successful') {
                 return $resultJson->setData(['success' => false, 'message' => 'Invalid event']);
             }
 
-            $data = $webhookData['data'];
+            $order = $this->getOrder($webhookData);
 
-            $quoteId = $data['meta_data']['quote_id'] ?? null;
-
-            if (!$quoteId) {
-                return $resultJson->setData(['success' => false, 'message' => 'Missing quote_id in webhook data']);
-            }
-
-            $this->logger->info('order data', ['quoteId' => $quoteId]);
-
-            $order = $this->orderInterface->loadByIncrementId($quoteId);
-
-            if (!$order->getId()) {
-                $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-                $searchCriteriaBuilder = $objectManager->create('Magento\Framework\Api\SearchCriteriaBuilder');
-                $searchCriteria = $searchCriteriaBuilder->addFilter('quote_id', $quoteId, 'eq')->create();
-                $items = $this->orderRepository->getList($searchCriteria);
-                if($items->getTotalCount() == 1){
-                    $order = $items->getFirstItem();
-                }
-            }
-
-            if (!$order->getId()) {
-                throw new \Exception('Order not found');
-            }
+            $this->logger->info('Order status', ['status' => $order->getStatus(), 'order_id' => $order->getId()]);
 
             if ($order->getStatus() == "pending") {
                 // sets the status to processing since payment has been received
@@ -113,9 +84,6 @@ class Webhook extends Action implements CsrfAwareActionInterface
                 $this->orderSender->send($order, true);
             }
 
-            // Log the webhook data
-            $this->logger->info('Webhook received', $webhookData);
-
             return $resultJson->setData(['success' => true]);
         } catch (\Exception $e) {
             $this->logger->error('Webhook processing error: ' . $e->getMessage());
@@ -127,16 +95,59 @@ class Webhook extends Action implements CsrfAwareActionInterface
      * Verify the webhook signature.
      *
      * @param string $data
-     * @param string $signature
+     * @param string|null $signature
      * @return bool
      */
     protected function verifySignature(string $data, ?string $signature): bool
     {
         $secret = $this->configProvider->getSecretKey();
-//        $this->paymentHelper->getSecretKey();
         if (!$secret) return false;
         $expectedSignature = hash_hmac('sha512', $data, $secret);
         return hash_equals($expectedSignature, $signature);
+    }
+
+    /**
+     * @param string $data
+     * @return array
+     * @throws \Exception
+     */
+    private function validateWebhookData(string $data): array
+    {
+        $webhookData = json_decode($data, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception('Invalid JSON data');
+        }
+        return $webhookData;
+    }
+
+    /**
+     * @param $webhookData
+     * @return OrderInterface|null
+     * @throws \Exception
+     */
+    private function getOrder($webhookData): ?OrderInterface
+    {
+        $order = null;
+        if (isset($webhookData['data']['merchant_reference'])) {
+            $order = $this->orderInterface->loadByIncrementId($webhookData['data']['merchant_reference']);
+        }
+
+        if (!$order && isset($webhookData['data']['meta_data']['quote_id'])) {
+            $searchCriteria = $this->searchCriteriaBuilder
+                ->addFilter('quote_id', $webhookData['data']['meta_data']['quote_id'], 'eq')
+                ->create();
+            $orders = $this->orderRepository->getList($searchCriteria)->getItems();
+
+            if (count($orders) === 1) {
+                $order = reset($orders);
+            }
+        }
+
+        if (!$order || !$order->getId()) {
+            throw new \Exception('Missing or invalid order details supplied in webhook.');
+        }
+
+        return $order;
     }
 
     /**

@@ -39,10 +39,10 @@
                     <label>Live Secret Key</label>
                     <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
                 </field>
-                <field id="show_klp_ads" translate="label" type="select" sortOrder="8" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Enable Klump Ads</label>
-                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                </field>
+<!--                <field id="show_klp_ads" translate="label" type="select" sortOrder="8" showInDefault="1" showInWebsite="1" showInStore="0">-->
+<!--                    <label>Enable Klump Ads</label>-->
+<!--                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>-->
+<!--                </field>-->
                 <field id="sort_order" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Sort Order</label>
                 </field>

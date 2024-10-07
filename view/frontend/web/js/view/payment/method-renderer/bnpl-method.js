@@ -38,7 +38,7 @@ define(
                 }
 
                 let script = document.createElement('script');
-                script.src = "https://staging-js.useklump.com/klump.js";
+                script.src = "https://js.useklump.com/klump.js";
                 script.onload = function() {
                     console.log('Klump script loaded successfully.');
                 };

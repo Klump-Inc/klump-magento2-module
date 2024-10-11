@@ -151,7 +151,9 @@ define(
                                     variable_name: "plugin",
                                     value: "magento-2"
                                 }
-                            ]
+                            ],
+                            klump_plugin_source: 'magento',
+                            klump_plugin_version: '0.1.0',
                         },
                         items: items
                     },

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="catalog_product_save_after">
+        <observer name="product_save_after_observer" instance="Klump\Payment\Observer\ProductSaveAfter" />
+    </event>
+    <event name="catalog_product_delete_after">
+        <observer name="product_delete_after_observer" instance="Klump\Payment\Observer\ProductDeleteAfter" />
+    </event>
+    <event name="sales_order_place_after">
+        <observer name="order_place_after_observer" instance="Klump\Payment\Observer\OrderPlaceAfter" />
+    </event>
+</config>

@@ -16,13 +16,13 @@ class SyncHelper extends AbstractHelper
     const XML_PATH_ENABLED_SYNC = 'payment/bnpl/enable_products_sync';
 
     public function __construct(
-        Context $context,
+        Context         $context,
         LoggerInterface $logger,
-        Client $client
+        Client          $client,
     ) {
         parent::__construct($context);
-        $this->logger = $logger;
-        $this->httpClient = $client;
+        $this->logger      = $logger;
+        $this->httpClient  = $client;
         $this->scopeConfig = $context->getScopeConfig();
     }
 
@@ -40,9 +40,23 @@ class SyncHelper extends AbstractHelper
             return;
         }
 
+        $secretKey = $this->scopeConfig->getValue('payment/bnpl/secret_key', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        $publicKey = $this->scopeConfig->getValue('payment/bnpl/public_key', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+
+        if (empty($secretKey) || empty($publicKey)) {
+            $this->logger->error('Credentials for product sync not set');
+            return;
+        }
+
         try {
-            $this->httpClient->post('https://rarely-in-sunbeam.ngrok-free.app/v1/sync', [
-                'json' => $productData,
+            $this->httpClient->post('https://api.useklump.com/v1/commerce/products/sync', [
+                'json'    => $productData,
+                'headers' => [
+                    'Content-Type'       => 'application/json',
+                    'X-Klump-Signature'  => hash_hmac('sha512', json_encode($productData), $secretKey),  // Generate HMAC signature
+                    'X-Klump-Public-Key' => $publicKey,
+                    'X-Plugin-Type'      => 'Magento 2',
+                ],
             ]);
             $this->logger->info('Product synced: ' . count($productData));
         } catch (\Exception $e) {

@@ -13,7 +13,7 @@ class SyncHelper extends AbstractHelper
     protected $httpClient;
     protected $scopeConfig;
 
-    const XML_PATH_ENABLED_SYNC = 'payment/bnpl/enabled_sync';
+    const XML_PATH_ENABLED_SYNC = 'payment/bnpl/enable_products_sync';
 
     public function __construct(
         Context $context,

@@ -16,9 +16,9 @@ class SyncButton extends Field
     const XML_PATH_ENABLED_SYNC = 'payment/bnpl/enable_products_sync';
 
     public function __construct(
-        Context $context,
+        Context              $context,
         ScopeConfigInterface $scopeConfig,
-        array $data = []
+        array                $data = []
     ) {
         $this->scopeConfig = $scopeConfig;
         parent::__construct($context, $data);

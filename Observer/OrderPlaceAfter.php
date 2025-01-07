@@ -19,33 +19,50 @@ class OrderPlaceAfter implements ObserverInterface
     {
         $order = $observer->getEvent()->getOrder();
         $data  = [];
-        // Example: Extract product data from order
+
         foreach ($order->getAllVisibleItems() as $item) {
             $productId   = $item->getProductId();
             $productType = $item->getProductType();
 
             if ($productType === \Magento\ConfigurableProduct\Model\Product\Type\Configurable::TYPE_CODE) {
-                // It's a variation of a configurable product
-                // Additional logic to manage specifics, if needed
                 $childItems = $item->getChildrenItems();
                 foreach ($childItems as $child) {
+                    $stockItem = $child->getExtensionAttributes()->getStockItem();
+                    $quantity  = $stockItem ? $stockItem->getQty() : 0;
+                    if ($quantity === null) {
+                        $quantity = $child->getIsInStock() ? 1 : 0;
+                    }
+
                     $data[] = [
-                        'id'           => $child->getProductId(),
-                        'variation_id' => $child->getId(),
                         'name'         => $child->getName(),
-                        'sku'          => $child->getSku(),
+                        'product_id'   => $productId,
+                        'variant_id'   => $child->getId(),
+                        'variant_name' => $child->getName(),
+                        'quantity'     => $quantity,
+                        'is_published' => $item->getStatus() == \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED,
                         'price'        => $child->getPrice(),
-                        'quantity'     => $child->getQtyOrdered(),
+                        'old_price'    => $child->getPrice() !== $child->getSpecialPrice() ? $child->getSpecialPrice() : 0,
+                        'description'  => $item->getDescription(),
+                        'sku'          => $child->getSku(),
                     ];
                 }
             } else {
+                $stockItem = $item->getExtensionAttributes()->getStockItem();
+                $quantity  = $stockItem ? $stockItem->getQty() : 0;
+                if ($quantity === null) {
+                    $quantity = $item->getIsInStock() ? 1 : 0;
+                }
                 $data[] = [
-                    'id'           => $productId,
-                    'variation_id' => null,
                     'name'         => $item->getName(),
-                    'sku'          => $item->getSku(),
+                    'product_id'   => $productId,
+                    'variant_id'   => null,
+                    'variant_name' => null,
+                    'quantity'     => $quantity,
+                    'is_published' => $item->getStatus() == \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED,
                     'price'        => $item->getPrice(),
-                    'quantity'     => $item->getQtyOrdered(),
+                    'old_price'    => $child->getPrice() !== $child->getSpecialPrice() ? $child->getSpecialPrice() : 0,
+                    'description'  => $item->getDescription(),
+                    'sku'          => $item->getSku(),
                 ];
             }
         }

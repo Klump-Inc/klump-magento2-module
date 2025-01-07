@@ -20,6 +20,7 @@
                 <max_order_amount>500000</max_order_amount>
                 <sort_order>400</sort_order>
                 <group>Offline</group>
+                <enable_products_sync>0</enable_products_sync>
                 <payment_action>authorize</payment_action>
             </bnpl>
         </payment>

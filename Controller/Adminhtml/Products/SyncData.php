@@ -38,6 +38,17 @@ class SyncData extends Action
 
         $data = [];
         foreach ($productCollection as $product) {
+            $item = [
+                'name'         => $product->getName(),
+                'variant_id'   => null,
+                'variant_name' => null,
+                'is_published' => $product->getStatus() == \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED,
+                'description'  => $product->getDescription(),
+                'product_id'   => $product->getId(),
+                'sub_category' => $this->getProductCategory($product),
+                'category'     => $this->getProductCategory($product, true),
+            ];
+
             if ($product->getTypeId() == \Magento\ConfigurableProduct\Model\Product\Type\Configurable::TYPE_CODE) {
                 // Handle configurable product
                 $childProducts = $product->getTypeInstance()->getUsedProducts($product);
@@ -48,21 +59,13 @@ class SyncData extends Action
                         $quantity = $child->getIsInStock() ? 1 : 0;
                     }
 
-                    $data[] = [
-                        'name'         => $product->getName(),
-                        'product_id'   => $product->getId(),
-                        'variant_id'   => $child->getId(),
-                        'variant_name' => $child->getName(),
-                        'quantity'     => $quantity,
-                        'image'        => $this->imageHelper->init($child, 'product_page_image_small')->getUrl(),
-                        'is_published' => $product->getStatus() == \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED,
-                        'price'        => $child->getPrice(),
-                        'old_price'    => $child->getPrice() !== $child->getSpecialPrice() ? $child->getSpecialPrice() : 0,
-                        'description'  => $product->getDescription(),
-                        'sku'          => $child->getSku(),
-                        'sub_category' => $this->getProductCategory($product),
-                        'category'     => $this->getProductCategory($product, true),
-                    ];
+                    $item['variant_id']   = $child->getId();
+                    $item['variant_name'] = $child->getName();
+                    $item['quantity']     = $quantity;
+                    $item['sku']          = $child->getSku();
+                    $item['price']        = $child->getPrice();
+                    $item['old_price']    = $child->getPrice() !== $child->getSpecialPrice() ? $child->getSpecialPrice() : 0;
+                    $item['image']        = $this->imageHelper->init($child, 'product_page_image_small')->getUrl();
                 }
             } elseif ($product->getTypeId() == \Magento\Catalog\Model\Product\Type::TYPE_SIMPLE) {
                 // Handle simple product
@@ -72,22 +75,14 @@ class SyncData extends Action
                     $quantity = $product->getIsInStock() ? 1 : 0;
                 }
 
-                $data[] = [
-                    'name'         => $product->getName(),
-                    'product_id'   => $product->getId(),
-                    'variant_id'   => null,
-                    'variant_name' => null,
-                    'quantity'     => $quantity,
-                    'image'        => $this->imageHelper->init($product, 'product_page_image_small')->getUrl(),
-                    'is_published' => $product->getStatus() == \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED,
-                    'price'        => $product->getPrice(),
-                    'old_price'    => $product->getPrice() !== $product->getSpecialPrice() ? $product->getSpecialPrice() : 0,
-                    'description'  => $product->getDescription(),
-                    'sku'          => $product->getSku(),
-                    'sub_category' => $this->getProductCategory($product),
-                    'category'     => $this->getProductCategory($product, true),
-                ];
+                $item['quantity']  = $quantity;
+                $item['image']     = $this->imageHelper->init($product, 'product_page_image_small')->getUrl();
+                $item['price']     = $product->getPrice();
+                $item['old_price'] = $product->getPrice() !== $product->getSpecialPrice() ? $product->getSpecialPrice() : 0;
+                $item['sku']       = $product->getSku();
             }
+
+            $data[] = $item;
         }
 
         if ($data) {

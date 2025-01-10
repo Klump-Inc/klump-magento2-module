@@ -18,6 +18,8 @@ class SyncHelper extends AbstractHelper
     protected $categoryFactory;
 
     const XML_PATH_ENABLED_SYNC = 'payment/bnpl/enable_products_sync';
+    const XML_PATH_SECRET_KEY = 'payment/bnpl/secret_key';
+    const XML_PATH_PUBLIC_KEY = 'payment/bnpl/public_key';
     const SYNC_URL = 'https://api.useklump.com/v1/commerce/products/sync';
 
     public function __construct(
@@ -49,11 +51,10 @@ class SyncHelper extends AbstractHelper
             return;
         }
 
-        $secretKey = $this->scopeConfig->getValue('payment/bnpl/secret_key', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        $publicKey = $this->scopeConfig->getValue('payment/bnpl/public_key', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        $secretKey = $this->scopeConfig->getValue(self::XML_PATH_SECRET_KEY, \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        $publicKey = $this->scopeConfig->getValue(self::XML_PATH_PUBLIC_KEY, \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
 
         if (empty($secretKey) || empty($publicKey)) {
-            $this->logger->error('Credentials for product sync not set');
             return;
         }
 

@@ -14,6 +14,8 @@ class SyncButton extends Field
     protected $scopeConfig;
 
     const XML_PATH_ENABLED_SYNC = 'payment/bnpl/enable_products_sync';
+    const XML_PATH_SECRET_KEY = 'payment/bnpl/secret_key';
+    const XML_PATH_PUBLIC_KEY = 'payment/bnpl/public_key';
 
     public function __construct(
         Context              $context,
@@ -52,9 +54,10 @@ class SyncButton extends Field
 
     protected function isProductSyncEnabled(): bool
     {
-        return $this->scopeConfig->isSetFlag(
-            self::XML_PATH_ENABLED_SYNC,
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-        );
+        $secretKey = $this->scopeConfig->getValue(self::XML_PATH_SECRET_KEY, \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        $publicKey = $this->scopeConfig->getValue(self::XML_PATH_PUBLIC_KEY, \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        $enabled = $this->scopeConfig->isSetFlag(self::XML_PATH_ENABLED_SYNC, \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+
+        return !empty($secretKey) && !empty($publicKey) && !empty($enabled);
     }
 }

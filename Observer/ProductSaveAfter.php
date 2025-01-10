@@ -33,45 +33,10 @@ class ProductSaveAfter implements ObserverInterface
         if ($product->getTypeId() == Configurable::TYPE_CODE) {
             $children = $product->getTypeInstance()->getUsedProducts($product);
             foreach ($children as $child) {
-                $stockItem = $child->getExtensionAttributes()->getStockItem();
-                $quantity  = $stockItem ? $stockItem->getQty() : 0;
-                if ($quantity === null) {
-                    $quantity = $child->getIsInStock() ? 1 : 0;
-                }
-
-                $data[] = [
-                    'name'         => $child->getName(),
-                    'product_id'   => $product->getId(),
-                    'variant_id'   => $child->getId(),
-                    'variant_name' => $child->getName(),
-                    'quantity'     => $quantity,
-                    'image'        => $this->imageHelper->init($child, 'product_page_image_small')->getUrl(),
-                    'is_published' => $product->getStatus() == \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED,
-                    'price'        => $child->getPrice(),
-                    'old_price'    => $child->getPrice() !== $child->getSpecialPrice() ? $child->getSpecialPrice() : 0,
-                    'description'  => $product->getDescription(),
-                    'sku'          => $child->getSku(),
-                ];
+                $data[] = $this->syncHelper->computeItemDetails($product, $child);
             }
         } else {
-            $stockItem = $product->getExtensionAttributes()->getStockItem();
-            $quantity  = $stockItem ? $stockItem->getQty() : 0;
-            if ($quantity === null) {
-                $quantity = $product->getIsInStock() ? 1 : 0;
-            }
-            $data[] = [
-                'name'         => $product->getName(),
-                'product_id'   => $product->getId(),
-                'variant_id'   => null,
-                'variant_name' => null,
-                'quantity'     => $quantity,
-                'image'        => $this->imageHelper->init($product, 'product_page_image_small')->getUrl(),
-                'is_published' => $product->getStatus() == \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED,
-                'price'        => $product->getPrice(),
-                'old_price'    => $product->getPrice() !== $product->getSpecialPrice() ? $product->getSpecialPrice() : 0,
-                'description'  => $product->getDescription(),
-                'sku'          => $product->getSku(),
-            ];
+            $data[] = $this->syncHelper->computeItemDetails($product);
         }
 
         $this->syncHelper->syncProducts($data);

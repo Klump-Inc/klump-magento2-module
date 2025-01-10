@@ -38,51 +38,16 @@ class SyncData extends Action
 
         $data = [];
         foreach ($productCollection as $product) {
-            $item = [
-                'name'         => $product->getName(),
-                'variant_id'   => null,
-                'variant_name' => null,
-                'is_published' => $product->getStatus() == \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED,
-                'description'  => $product->getDescription(),
-                'product_id'   => $product->getId(),
-                'sub_category' => $this->getProductCategory($product),
-                'category'     => $this->getProductCategory($product, true),
-            ];
-
             if ($product->getTypeId() == \Magento\ConfigurableProduct\Model\Product\Type\Configurable::TYPE_CODE) {
                 // Handle configurable product
                 $childProducts = $product->getTypeInstance()->getUsedProducts($product);
                 foreach ($childProducts as $child) {
-                    $stockItem = $child->getExtensionAttributes()->getStockItem();
-                    $quantity  = $stockItem ? $stockItem->getQty() : 0;
-                    if ($quantity === null) {
-                        $quantity = $child->getIsInStock() ? 1 : 0;
-                    }
-
-                    $item['variant_id']   = $child->getId();
-                    $item['variant_name'] = $child->getName();
-                    $item['quantity']     = $quantity;
-                    $item['sku']          = $child->getSku();
-                    $item['price']        = $child->getPrice();
-                    $item['old_price']    = $child->getPrice() !== $child->getSpecialPrice() ? $child->getSpecialPrice() : 0;
-                    $item['image']        = $this->imageHelper->init($child, 'product_page_image_small')->getUrl();
+                    $data[] = $this->syncHelper->computeItemDetails($product, $child);
                 }
             } elseif ($product->getTypeId() == \Magento\Catalog\Model\Product\Type::TYPE_SIMPLE) {
                 // Handle simple product
-                $stockItem = $product->getExtensionAttributes()->getStockItem();
-                $quantity  = $stockItem ? $stockItem->getQty() : 0;
-                if ($quantity === null) {
-                    $quantity = $product->getIsInStock() ? 1 : 0;
-                }
-
-                $item['quantity']  = $quantity;
-                $item['image']     = $this->imageHelper->init($product, 'product_page_image_small')->getUrl();
-                $item['price']     = $product->getPrice();
-                $item['old_price'] = $product->getPrice() !== $product->getSpecialPrice() ? $product->getSpecialPrice() : 0;
-                $item['sku']       = $product->getSku();
+                $data[] = $this->syncHelper->computeItemDetails($product);
             }
-
-            $data[] = $item;
         }
 
         if ($data) {
@@ -100,32 +65,5 @@ class SyncData extends Action
         return $this->_authorization->isAllowed('Klump_Payment::sync'); // Adjust your ACL resource
     }
 
-    protected function getProductCategory($product, $topCategory = false)
-    {
-        $categoryIds = $product->getCategoryIds();
-        if (empty($categoryIds)) {
-            return '';
-        }
 
-        $categories = $this->categoryFactory->create()->getCollection()
-            ->addAttributeToSelect('name')
-            ->addAttributeToFilter('entity_id', ['in' => $categoryIds]);
-
-        if ($topCategory) {
-            $categoryNames = [];
-            foreach ($categories as $category) {
-                if ($category->getLevel() == 2) {
-                    $categoryNames[] = $category->getName();
-                }
-            }
-            return implode(', ', $categoryNames);
-        }
-
-        $categoryNames = [];
-        foreach ($categories as $category) {
-            $categoryNames[] = $category->getName();
-        }
-
-        return implode(', ', $categoryNames);
-    }
 }

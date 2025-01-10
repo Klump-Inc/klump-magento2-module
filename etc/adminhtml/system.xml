@@ -72,6 +72,14 @@
                 <field id="instructions" showInDefault="1" showInStore="1" showInWebsite="1" sortOrder="70" translate="label" type="textarea">
                     <label>Instructions</label>
                 </field>
+                <field id="enable_products_sync" type="select" sortOrder="101" showInDefault="1" showInWebsite="1" showInStore="0" translate="label">
+                    <label>Enable Products Sync</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="sync_now" translate="label" type="button" sortOrder="101" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Sync All Products Now</label>
+                    <frontend_model>Klump\Payment\Block\System\Config\Fieldset\SyncButton</frontend_model>
+                </field>
             </group>
         </section>
     </system>

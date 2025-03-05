@@ -2,6 +2,8 @@
 
 namespace Klump\Payment\Block\System\Config\Fieldset;
 
+use Magento\Framework\Data\Form\Element\AbstractElement;
+
 /**
  * Fieldset renderer for Klump payment
  */
@@ -12,7 +14,7 @@ class Payment extends \Magento\Config\Block\System\Config\Form\Fieldset
   /**
    * Add custom css class
    *
-   * @param \Magento\Framework\Data\Form\Element\AbstractElement $element
+   * @param AbstractElement $element
    * @return string
    */
   protected function _getFrontendClass($element)
@@ -23,7 +25,7 @@ class Payment extends \Magento\Config\Block\System\Config\Form\Fieldset
    /**
    * Return header title part of html for Klump payments
    *
-   * @param \Magento\Framework\Data\Form\Element\AbstractElement $element
+   * @param AbstractElement $element
    * @return string
    * @SuppressWarnings(PHPMD.NPathComplexity)
    */
@@ -67,7 +69,7 @@ class Payment extends \Magento\Config\Block\System\Config\Form\Fieldset
   /**
    * Return header comment part of html for Klump payments
    *
-   * @param \Magento\Framework\Data\Form\Element\AbstractElement $element
+   * @param AbstractElement $element
    * @return string
    * @SuppressWarnings(PHPMD.UnusedFormalParameter)
    */

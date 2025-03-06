@@ -146,7 +146,6 @@ define(
                         items: items
                     },
                     onSuccess: (data) => {
-                        console.log(data);
                         _this.isPlaceOrderActionAllowed(true);
                         redirectOnSuccessAction.execute();
                     },
@@ -160,13 +159,9 @@ define(
                     },
                     onLoad: (data) => {
                         console.log('html onLoad will be handled by the merchant');
-                        console.log(data);
                     },
-                    onOpen: (data) => {
-                        console.log('html OnOpen will be handled by the merchant', data);
-                    },
+                    onOpen: (data) => {},
                     onClose: (data) => {
-                        console.log('html onClose will be handled by the merchant', data);
                         fullScreenLoader.stopLoader();
                     }
                 }
@@ -191,7 +186,6 @@ define(
 
                 try {
                     new Klump(payload);
-                    console.log('Klump initialized successfully.');
                 } catch (error) {
                     console.error('Klump initialization error:', error);
                 }

@@ -37,16 +37,6 @@ define(
                     document.body.appendChild(klumpCheckout);
                 }
 
-                let script = document.createElement('script');
-                script.src = "https://js.useklump.com/klump.js";
-                script.onload = function() {
-                    console.log('Klump script loaded successfully.');
-                };
-                script.onerror = function() {
-                    console.error('Failed to load Klump script.');
-                };
-                document.head.appendChild(script);
-
                 return this;
             },
 
@@ -69,8 +59,6 @@ define(
                 var checkoutConfig = window.checkoutConfig;
                 var paymentData = quote.billingAddress();
                 var klumpConfig = checkoutConfig.payment.bnpl;
-
-                console.log('klumpConfig', klumpConfig);
 
                 // Base URL for constructing item URLs and image URLs
                 var baseUrl = window.location.origin;
@@ -158,7 +146,6 @@ define(
                         items: items
                     },
                     onSuccess: (data) => {
-                        console.log(data);
                         _this.isPlaceOrderActionAllowed(true);
                         redirectOnSuccessAction.execute();
                     },
@@ -172,13 +159,9 @@ define(
                     },
                     onLoad: (data) => {
                         console.log('html onLoad will be handled by the merchant');
-                        console.log(data);
                     },
-                    onOpen: (data) => {
-                        console.log('html OnOpen will be handled by the merchant', data);
-                    },
+                    onOpen: (data) => {},
                     onClose: (data) => {
-                        console.log('html onClose will be handled by the merchant', data);
                         fullScreenLoader.stopLoader();
                     }
                 }
@@ -191,18 +174,18 @@ define(
                     }
                 }
 
-                if (customerData.firstname) {
-                    payload.data.first_name = customerData.firstname;
-                }
+                if(customerData) {
+                    if (customerData.firstname) {
+                        payload.data.first_name = customerData.firstname;
+                    }
 
-                if (customerData.lastname) {
-                    payload.data.last_name = customerData.lastname;
+                    if (customerData.lastname) {
+                        payload.data.last_name = customerData.lastname;
+                    }
                 }
 
                 try {
-                    console.log('Initializing Klump with payload:', payload);
                     new Klump(payload);
-                    console.log('Klump initialized successfully.');
                 } catch (error) {
                     console.error('Klump initialization error:', error);
                 }

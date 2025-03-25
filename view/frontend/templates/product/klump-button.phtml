@@ -8,4 +8,9 @@ if ($block->isActive()): ?>
             <input type="hidden" value="<?= $block->escapeHtmlAttr($block->getCurrentCurrency()) ?>" id="klump__currency">
         </div>
     </div>
+    <script>
+        require(['Klump_Payment/js/klump-config'], function(klumpConfig) {
+            klumpConfig.loadScript();
+        });
+    </script>
 <?php endif; ?>

@@ -7,6 +7,7 @@ define(
         "Magento_Checkout/js/model/quote",
         "Magento_Checkout/js/model/full-screen-loader",
         "Magento_Checkout/js/action/redirect-on-success",
+        'Klump_Payment/js/klump-config'
     ],
     function (
         $,
@@ -16,6 +17,7 @@ define(
         quote,
         fullScreenLoader,
         redirectOnSuccessAction,
+        klumpConfig,
     ) {
         'use strict';
 
@@ -36,6 +38,8 @@ define(
                     klumpCheckout.id = 'klump__checkout';
                     document.body.appendChild(klumpCheckout);
                 }
+
+                klumpConfig.loadScript();
 
                 return this;
             },

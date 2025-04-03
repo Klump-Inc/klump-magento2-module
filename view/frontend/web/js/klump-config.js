@@ -10,8 +10,8 @@ define([], function() {
                     console.log('Klump script loaded successfully.');
                     if (callback) callback();
                 };
-                script.onerror = function() {
-                    console.error('Failed to load Klump script.');
+                script.onerror = function(error) {
+                    console.error('Failed to load Klump script.', error);
                 };
                 document.head.appendChild(script);
             } else if (callback) {

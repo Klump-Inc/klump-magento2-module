@@ -31,12 +31,12 @@ define(
             initialize: function () {
                 this._super();
 
-                let klumpCheckout = document.getElementById('klump__checkout');
+                let myKlumpContainer = document.getElementById('klump__checkout');
 
-                if (!klumpCheckout) {
-                    klumpCheckout = document.createElement('div');
-                    klumpCheckout.id = 'klump__checkout';
-                    document.body.appendChild(klumpCheckout);
+                if (!myKlumpContainer) {
+                    myKlumpContainer = document.createElement('div');
+                    myKlumpContainer.id = 'klump__checkout';
+                    document.body.appendChild(myKlumpContainer);
                 }
 
                 klumpConfig.loadScript();
@@ -54,12 +54,16 @@ define(
 
             placeOrder: function () {
                 if (this.validate()) {
-                    this._super();
+                    this.processKlumpPayment();
                 }
-                return true;
+                return false;
             },
 
             afterPlaceOrder: function () {
+                // Empty function as we're handling everything in processKlumpPayment
+            },
+
+            processKlumpPayment: function () {
                 var checkoutConfig = window.checkoutConfig;
                 var paymentData = quote.billingAddress();
                 var klumpConfig = checkoutConfig.payment.bnpl;
@@ -91,7 +95,9 @@ define(
                 // Fetching cart items
                 var cartItems = quote.getItems();
                 if (!cartItems.length) {
-                    console.error('Cart is empty');
+                    _this.messageContainer.addErrorMessage({
+                        message: "Cart is empty."
+                    });
                     return;
                 }
 
@@ -151,22 +157,26 @@ define(
                     },
                     onSuccess: (data) => {
                         _this.isPlaceOrderActionAllowed(true);
-                        redirectOnSuccessAction.execute();
+                        placeOrderAction(this.getData())
+                            .done(function () {
+                                redirectOnSuccessAction.execute();
+                            })
+                            .fail(function (response) {
+                                _this.messageContainer.addErrorMessage({
+                                    message: "Error placing order: " + response
+                                });
+                            });
                     },
                     onError: (data) => {
-                        console.error(data);
-                        console.error('error occurred');
+                        _this.isPlaceOrderActionAllowed(true);
                         _this.messageContainer.addErrorMessage({
                             message: "Error, please try again"
                         });
-                        fullScreenLoader.stopLoader();
                     },
-                    onLoad: (data) => {
-                        console.log('html onLoad will be handled by the merchant');
-                    },
+                    onLoad: (data) => {},
                     onOpen: (data) => {},
                     onClose: (data) => {
-                        fullScreenLoader.stopLoader();
+                        _this.isPlaceOrderActionAllowed(true);
                     }
                 }
 
@@ -191,7 +201,10 @@ define(
                 try {
                     new Klump(payload);
                 } catch (error) {
-                    console.error('Klump initialization error:', error);
+                    _this.isPlaceOrderActionAllowed(true);
+                    _this.messageContainer.addErrorMessage({
+                        message: "Failed to initialize payment. Please try again."
+                    });
                 }
             }
         });

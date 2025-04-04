@@ -4,8 +4,8 @@
         <payment>
             <bnpl>
                 <active>0</active>
-                <title>Buy Now Pay Later (BNPL) - Klump</title>
-                <description>Buy Now Pay Later (BNPL) - Klump</description>
+                <title>Klump - Buy Now Pay Later (BNPL)</title>
+                <description>Buy now and pay in instalment with Klump</description>
                 <test_mode>1</test_mode>
                 <model>Klump\Payment\Model\BnplPayment</model>
                 <live_secret_key backend_model="Magento\Config\Model\Config\Backend\Encrypted" />

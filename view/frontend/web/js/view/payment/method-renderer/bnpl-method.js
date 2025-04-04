@@ -7,7 +7,8 @@ define(
         "Magento_Checkout/js/model/quote",
         "Magento_Checkout/js/model/full-screen-loader",
         "Magento_Checkout/js/action/redirect-on-success",
-        'Klump_Payment/js/klump-config'
+        'Klump_Payment/js/klump-config',
+        'mage/url',
     ],
     function (
         $,
@@ -18,15 +19,21 @@ define(
         fullScreenLoader,
         redirectOnSuccessAction,
         klumpConfig,
+        url,
     ) {
         'use strict';
 
         return Component.extend({
             defaults: {
                 template: 'Klump_Payment/payment/bnpl',
+                icon: 'Klump_Payment/images/klump-logo.png',
             },
 
             redirectAfterPlaceOrder: false,
+
+            getPaymentIcon: function() {
+                return require.toUrl(this.icon);
+            },
 
             initialize: function () {
                 this._super();
@@ -64,6 +71,15 @@ define(
             },
 
             processKlumpPayment: function () {
+                if (!quote.getItems() || !quote.getItems().length) {
+                    console.error('Cart is empty or invalid');
+                    fullScreenLoader.stopLoader();
+
+                    // Redirect to cart page
+                    window.location.href = url.build('checkout/cart');
+                    return false;
+                }
+
                 var checkoutConfig = window.checkoutConfig;
                 var paymentData = quote.billingAddress();
                 var klumpConfig = checkoutConfig.payment.bnpl;
@@ -118,39 +134,13 @@ define(
                         amount: parseFloat(quote.totals().grand_total, 10),
                         currency: checkoutConfig.totalsData.quote_currency_code,
                         email: paymentData.email,
-                        // merchant_reference: orderId,
+                        merchant_reference: quoteId,
                         shipping_fee: shippingCost,
                         redirect_url: baseUrl + '/checkout/#confirmation',
                         meta_data: {
-                            quote_id: quoteId,
-                            custom_fields: [
-                                {
-                                    display_name: "QuoteId",
-                                    variable_name: "quote id",
-                                    value: quoteId
-                                },
-                                {
-                                    display_name: "Address",
-                                    variable_name: "address",
-                                    value: paymentData.street[0] + ", " + paymentData.street[1]
-                                },
-                                {
-                                    display_name: "Postal Code",
-                                    variable_name: "postal_code",
-                                    value: paymentData.postcode
-                                },
-                                {
-                                    display_name: "City",
-                                    variable_name: "city",
-                                    value: paymentData.city + ", " + paymentData.countryId
-                                },
-                                {
-                                    display_name: "Plugin",
-                                    variable_name: "plugin",
-                                    value: "magento-2"
-                                }
-                            ],
-                            klump_plugin_source: 'magento',
+                            email: paymentData.email,
+                            order_id: quoteId,
+                            klump_plugin_source: 'magento-2',
                             klump_plugin_version: '0.1.0',
                         },
                         items: items
@@ -168,15 +158,21 @@ define(
                             });
                     },
                     onError: (data) => {
-                        _this.isPlaceOrderActionAllowed(true);
+                        console.error(data);
                         _this.messageContainer.addErrorMessage({
                             message: "Error, please try again"
                         });
+
+                        fullScreenLoader.stopLoader();
+                        _this.isPlaceOrderActionAllowed(true);
+                        return false;
                     },
                     onLoad: (data) => {},
                     onOpen: (data) => {},
                     onClose: (data) => {
+                        // Re-enable place order button if needed
                         _this.isPlaceOrderActionAllowed(true);
+                        return false; // Prevent any default navigation
                     }
                 }
 
@@ -186,6 +182,10 @@ define(
                     } else {
                         payload.data.phone = paymentData.telephone;
                     }
+                }
+
+                if (shippingCost) {
+                    payload.data.shipping_fee = shippingCost;
                 }
 
                 if(customerData) {

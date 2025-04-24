@@ -38,11 +38,11 @@ define(
             initialize: function () {
                 this._super();
 
-                let myKlumpContainer = document.getElementById('klump__magento__checkout');
+                let myKlumpContainer = document.getElementById('klump__cms__checkout');
 
                 if (!myKlumpContainer) {
                     myKlumpContainer = document.createElement('div');
-                    myKlumpContainer.id = 'klump__magento__checkout';
+                    myKlumpContainer.id = 'klump__cms__checkout';
                     document.body.appendChild(myKlumpContainer);
                 }
 

@@ -38,11 +38,11 @@ define(
             initialize: function () {
                 this._super();
 
-                let myKlumpContainer = document.getElementById('klump__checkout');
+                let myKlumpContainer = document.getElementById('klump__cms__checkout');
 
                 if (!myKlumpContainer) {
                     myKlumpContainer = document.createElement('div');
-                    myKlumpContainer.id = 'klump__checkout';
+                    myKlumpContainer.id = 'klump__cms__checkout';
                     document.body.appendChild(myKlumpContainer);
                 }
 
@@ -134,7 +134,6 @@ define(
                         amount: parseFloat(quote.totals().grand_total, 10),
                         currency: checkoutConfig.totalsData.quote_currency_code,
                         email: paymentData.email,
-                        merchant_reference: quoteId,
                         shipping_fee: shippingCost,
                         redirect_url: baseUrl + '/checkout/#confirmation',
                         meta_data: {
@@ -144,6 +143,10 @@ define(
                             klump_plugin_version: '0.1.0',
                         },
                         items: items
+                    },
+                    // Conditionally set merchant_reference
+                    if (quoteId) {
+                        data.merchant_reference = quoteId;
                     },
                     onSuccess: (data) => {
                         _this.isPlaceOrderActionAllowed(true);

@@ -26,7 +26,7 @@ define(
         return Component.extend({
             defaults: {
                 template: 'Klump_Payment/payment/bnpl',
-                icon: 'Klump_Payment/images/klump-logo.png',
+                icon: 'Klump_Payment/images/logo.svg',
             },
 
             redirectAfterPlaceOrder: false,
@@ -57,6 +57,10 @@ define(
 
             getCode: function() {
                 return "bnpl";
+            },
+
+            getTitle: function() {
+              return 'Buy Now Pay Later (BNPL)';
             },
 
             placeOrder: function () {

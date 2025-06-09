@@ -18,6 +18,11 @@ class OrderPlaceAfter implements ObserverInterface
     public function execute(Observer $observer): void
     {
         $order = $observer->getEvent()->getOrder();
+
+        if ($order->getPayment()->getMethod() !== 'bnpl') {
+            return;
+        }
+
         $data  = [];
 
         foreach ($order->getAllVisibleItems() as $product) {

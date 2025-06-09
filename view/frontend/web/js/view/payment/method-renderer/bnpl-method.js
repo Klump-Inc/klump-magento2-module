@@ -75,18 +75,26 @@ define(
             },
 
             processKlumpPayment: function () {
-                if (!quote.getItems() || !quote.getItems().length) {
-                    console.error('Cart is empty or invalid');
-                    fullScreenLoader.stopLoader();
-
-                    // Redirect to cart page
-                    window.location.href = url.build('checkout/cart');
-                    return false;
-                }
-
                 var checkoutConfig = window.checkoutConfig;
                 var paymentData = quote.billingAddress();
                 var klumpConfig = checkoutConfig.payment.bnpl;
+
+                // Validate configuration first
+                if (!klumpConfig || !klumpConfig.public_key) {
+                    this.messageContainer.addErrorMessage({
+                        message: "Klump payment is not properly configured. Please contact support."
+                    });
+                    return;
+                }
+
+                // Validate quote exists
+                if (!quote.getQuoteId()) {
+                    this.messageContainer.addErrorMessage({
+                        message: "Your session has expired. Please refresh the page and try again."
+                    });
+                    window.location.reload();
+                    return;
+                }
 
                 // Base URL for constructing item URLs and image URLs
                 var baseUrl = window.location.origin;
@@ -103,21 +111,22 @@ define(
                 var _this = this;
 
                 if (typeof Klump === 'undefined') {
-                    console.error('Klump is undefined');
+                    this.messageContainer.addErrorMessage({
+                        message: "Klump (BNPL) payment gateway is not available. Please try again or contact support."
+                    });
+                    this.isPlaceOrderActionAllowed(true);
                     return;
                 }
 
-                var quoteId = checkoutConfig.quoteItemData[0].quote_id // quote.getQuoteId()[0];
-
-                // Fetching shipping cost
+                var quoteId = checkoutConfig.quoteItemData[0].quote_id;
                 var shippingCost = quote.shippingMethod().amount;
-
-                // Fetching cart items
                 var cartItems = quote.getItems();
+
                 if (!cartItems.length) {
                     _this.messageContainer.addErrorMessage({
                         message: "Cart is empty."
                     });
+                    this.isPlaceOrderActionAllowed(true);
                     return;
                 }
 
@@ -125,7 +134,7 @@ define(
                 var items = cartItems.map(function(item) {
                     return {
                         name: item.name,
-                        unit_price: (parseFloat(item.row_total_incl_tax) - parseFloat(item.discount_amount)) / item.qty, // Ensure correct price attribute according to your Magento setup
+                        unit_price: (parseFloat(item.row_total_incl_tax) - parseFloat(item.discount_amount)) / item.qty,
                         quantity: item.qty,
                         image_url: item.thumbnail,
                         item_url: baseUrl + item.product.request_path,
@@ -141,48 +150,115 @@ define(
                         shipping_fee: shippingCost,
                         redirect_url: baseUrl + '/checkout/#confirmation',
                         meta_data: {
-                            email: paymentData.email,
-                            order_id: quoteId,
-                            klump_plugin_source: 'magento-2',
-                            klump_plugin_version: '0.1.0',
+                            quote_id: quoteId,
+                            custom_fields: [
+                                {
+                                    display_name: "QuoteId",
+                                    variable_name: "quote id",
+                                    value: quoteId
+                                },
+                                {
+                                    display_name: "Address",
+                                    variable_name: "address",
+                                    value: paymentData.street[0] + ", " + paymentData.street[1]
+                                },
+                                {
+                                    display_name: "Postal Code",
+                                    variable_name: "postal_code",
+                                    value: paymentData.postcode
+                                },
+                                {
+                                    display_name: "City",
+                                    variable_name: "city",
+                                    value: paymentData.city + ", " + paymentData.countryId
+                                },
+                                {
+                                    display_name: "Plugin",
+                                    variable_name: "plugin",
+                                    value: "magento-2"
+                                }
+                            ],
+                            klump_plugin_source: 'magento',
+                            klump_plugin_version: '1.0.1',
                         },
                         items: items
                     },
-                    // Conditionally set merchant_reference
-                    if (quoteId) {
-                        data.merchant_reference = quoteId;
-                    },
                     onSuccess: (data) => {
                         _this.isPlaceOrderActionAllowed(true);
+
+                        // Validate quote before placing order
+                        if (!quote.getQuoteId()) {
+                            _this.messageContainer.addErrorMessage({
+                                message: "Your session has expired. Please refresh the page and try again."
+                            });
+                            window.location.reload();
+                            return;
+                        }
+
                         placeOrderAction(this.getData())
                             .done(function () {
                                 redirectOnSuccessAction.execute();
                             })
                             .fail(function (response) {
-                                _this.messageContainer.addErrorMessage({
-                                    message: "Error placing order: " + response
-                                });
+                                // Handle quote expiration specifically
+                                if (response.responseJSON && response.responseJSON.message &&
+                                    response.responseJSON.message.includes('No such entity with')) {
+                                    _this.messageContainer.addErrorMessage({
+                                        message: "Your session has expired. Please refresh the page and try again."
+                                    });
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 2000);
+                                } else {
+                                    _this.messageContainer.addErrorMessage({
+                                        message: "Error placing order: " + (response.responseJSON ? response.responseJSON.message : response)
+                                    });
+                                }
                             });
                     },
                     onError: (data) => {
-                        console.error(data);
-                        _this.messageContainer.addErrorMessage({
-                            message: "Error, please try again"
-                        });
+                        // Validate quote before placing order for failed payments
+                        if (!quote.getQuoteId()) {
+                            _this.messageContainer.addErrorMessage({
+                                message: "Payment failed and your session has expired. Please refresh the page and try again."
+                            });
+                            window.location.reload();
+                            return;
+                        }
 
-                        fullScreenLoader.stopLoader();
+                        // Create order even for failed payments so they appear in admin
+                        placeOrderAction(this.getData())
+                            .done(function (orderId) {
+                                _this.messageContainer.addErrorMessage({
+                                    message: "Payment failed. Order #" + orderId + " has been created for follow-up."
+                                });
+                            })
+                            .fail(function (response) {
+                                // Handle quote expiration specifically
+                                if (response.responseJSON && response.responseJSON.message &&
+                                    response.responseJSON.message.includes('No such entity with')) {
+                                    _this.messageContainer.addErrorMessage({
+                                        message: "Payment failed and your session has expired. Please refresh the page and try again."
+                                    });
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 2000);
+                                } else {
+                                    _this.messageContainer.addErrorMessage({
+                                        message: "Payment failed and order could not be created: " + (response.responseJSON ? response.responseJSON.message : response)
+                                    });
+                                }
+                            });
                         _this.isPlaceOrderActionAllowed(true);
-                        return false;
                     },
                     onLoad: (data) => {},
                     onOpen: (data) => {},
                     onClose: (data) => {
-                        // Re-enable place order button if needed
                         _this.isPlaceOrderActionAllowed(true);
-                        return false; // Prevent any default navigation
                     }
                 }
 
+                // Add phone number if available
                 if (paymentData.telephone) {
                     if (paymentData.telephone.length > 11) {
                         payload.data.phone = '0' + paymentData.telephone.substring(paymentData.telephone.length - 10);
@@ -191,15 +267,11 @@ define(
                     }
                 }
 
-                if (shippingCost) {
-                    payload.data.shipping_fee = shippingCost;
-                }
-
+                // Add customer names if available
                 if(customerData) {
                     if (customerData.firstname) {
                         payload.data.first_name = customerData.firstname;
                     }
-
                     if (customerData.lastname) {
                         payload.data.last_name = customerData.lastname;
                     }
@@ -210,7 +282,7 @@ define(
                 } catch (error) {
                     _this.isPlaceOrderActionAllowed(true);
                     _this.messageContainer.addErrorMessage({
-                        message: "Failed to initialize payment. Please try again."
+                        message: "Failed to initialize payment. Please check your configuration and try again."
                     });
                 }
             }

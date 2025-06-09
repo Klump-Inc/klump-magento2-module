@@ -74,50 +74,30 @@ class Webhook extends Action implements CsrfAwareActionInterface
                         'order_id' => $order->getId(),
                         'before_status' => $order->getStatus()
                     ]);
-                    if ($order->getStatus() == "pending") {
+                    if ($order->getStatus() == 'pending') {
                         $order->setState(Order::STATE_PROCESSING)
-                            ->addStatusToHistory(Order::STATE_PROCESSING, __("Klump BNPL Payment Verified and Order is being processed"), true)
+                            ->addStatusToHistory(Order::STATE_PROCESSING, __('Klump BNPL Payment Verified and Order is being processed'), true)
                             ->setCanSendNewEmailFlag(true)
                             ->setCustomerNoteNotify(true);
                         $this->orderRepository->save($order);
                         $this->orderSender->send($order, true);
-
-                        $this->logger->info('Klump Webhook: Order updated to processing', [
-                            'order_id' => $order->getId(),
-                            'new_status' => $order->getStatus(),
-                            'email_sent' => true
-                        ]);
-                    } else {
-                        $this->logger->warning('Klump Webhook: Order not in pending status', [
-                            'order_id' => $order->getId(),
-                            'current_status' => $order->getStatus(),
-                            'action' => 'skipped_processing'
-                        ]);
+                    } elseif ($order->getState() === Order::STATE_PROCESSING) {
+                        // Add verification for already processing orders
+                        $order->addCommentToStatusHistory(
+                            'Payment verified by Klump webhook. Transaction ID: ' . $webhookData['data']['transaction_id'],
+                            false,
+                            false,
+                        );
                     }
                     break;
 
                 case 'klump.payment.transaction.failed':
-                    $this->logger->info('Klump Webhook: Processing failed payment', [
-                        'order_id' => $order->getId(),
-                        'before_status' => $order->getStatus()
-                    ]);
-                    if ($order->getStatus() == "pending") {
+                    if ($order->getStatus() == 'pending') {
                         $order->setState(Order::STATE_CANCELED)
                             ->addStatusToHistory(Order::STATE_CANCELED, __("Klump BNPL Payment Failed"), true)
                             ->setCanSendNewEmailFlag(true)
                             ->setCustomerNoteNotify(true);
                         $this->orderRepository->save($order);
-
-                        $this->logger->info('Klump Webhook: Order canceled due to failed payment', [
-                            'order_id' => $order->getId(),
-                            'new_status' => $order->getStatus()
-                        ]);
-                    } else {
-                        $this->logger->warning('Klump Webhook: Order not in pending status for cancellation', [
-                            'order_id' => $order->getId(),
-                            'current_status' => $order->getStatus(),
-                            'action' => 'skipped_cancellation'
-                        ]);
                     }
                     break;
 

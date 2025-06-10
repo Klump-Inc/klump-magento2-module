@@ -11,6 +11,11 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
     protected $_code = self::CODE;
 
     protected $_isOffline = true;
+    protected $_canAuthorize = true;
+    protected $_canCapture = true;
+    protected $_canCapturePartial = false;
+    protected $_canRefund = false;
+    protected $_canVoid = true;
 
     public function isAvailable(
         \Magento\Quote\Api\Data\CartInterface $quote = null
@@ -33,5 +38,10 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
     public function canAuthorize()
     {
         return true;
+    }
+
+    public function getOrderPlaceRedirectUrl()
+    {
+        return false; // Stay on checkout page for Klump modal
     }
 }

@@ -64,24 +64,49 @@ class Webhook extends Action implements CsrfAwareActionInterface
 
         try {
             $webhookData = $this->validateWebhookData($data);
-
-            if ($webhookData['event'] !== 'klump.payment.transaction.successful') {
-                return $resultJson->setData(['success' => false, 'message' => 'Invalid event']);
-            }
-
             $order = $this->getOrder($webhookData);
 
             $this->logger->info('Order status', ['status' => $order->getStatus(), 'order_id' => $order->getId()]);
 
-            if ($order->getStatus() == "pending") {
-                // sets the status to processing since payment has been received
-                $order->setState(Order::STATE_PROCESSING)
-                    ->addStatusToHistory(Order::STATE_PROCESSING, __("Klump BNPL Payment Verified and Order is being processed"), true)
-                    ->setCanSendNewEmailFlag(true)
-                    ->setCustomerNoteNotify(true);
-                $this->orderRepository->save($order);
+            switch ($webhookData['event']) {
+                case 'klump.payment.transaction.successful':
+                    $this->logger->info('Klump Webhook: Processing successful payment', [
+                        'order_id' => $order->getId(),
+                        'before_status' => $order->getStatus()
+                    ]);
+                    if ($order->getStatus() == 'pending') {
+                        $order->setState(Order::STATE_PROCESSING)
+                            ->addStatusToHistory(Order::STATE_PROCESSING, __('Klump BNPL Payment Verified and Order is being processed'), true)
+                            ->setCanSendNewEmailFlag(true)
+                            ->setCustomerNoteNotify(true);
+                        $this->orderRepository->save($order);
+                        $this->orderSender->send($order, true);
+                    } elseif ($order->getState() === Order::STATE_PROCESSING) {
+                        // Add verification for already processing orders
+                        $order->addCommentToStatusHistory(
+                            'Payment verified by Klump webhook. Transaction ID: ' . $webhookData['data']['transaction_id'],
+                            false,
+                            false,
+                        );
+                    }
+                    break;
 
-                $this->orderSender->send($order, true);
+                case 'klump.payment.transaction.failed':
+                    if ($order->getStatus() == 'pending') {
+                        $order->setState(Order::STATE_CANCELED)
+                            ->addStatusToHistory(Order::STATE_CANCELED, __("Klump BNPL Payment Failed"), true)
+                            ->setCanSendNewEmailFlag(true)
+                            ->setCustomerNoteNotify(true);
+                        $this->orderRepository->save($order);
+                    }
+                    break;
+
+                default:
+                    $this->logger->error('Klump Webhook: Unhandled event type', [
+                        'event' => $webhookData['event'],
+                        'available_data' => array_keys($webhookData)
+                    ]);
+                    return $resultJson->setData(['success' => false, 'message' => 'Unhandled event type']);
             }
 
             return $resultJson->setData(['success' => true]);
@@ -101,7 +126,12 @@ class Webhook extends Action implements CsrfAwareActionInterface
     protected function verifySignature(string $data, ?string $signature): bool
     {
         $secret = $this->configProvider->getSecretKey();
-        if (!$secret) return false;
+
+        if (!$secret) {
+            $this->logger->error('Klump Webhook: Secret key not configured');
+            return false;
+        }
+
         $expectedSignature = hash_hmac('sha512', $data, $secret);
         return hash_equals($expectedSignature, $signature);
     }
@@ -115,7 +145,12 @@ class Webhook extends Action implements CsrfAwareActionInterface
     {
         $webhookData = json_decode($data, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \Exception('Invalid JSON data');
+            $this->logger->error('Klump Webhook: JSON parsing error', [
+                'json_error' => json_last_error_msg(),
+                'json_error_code' => json_last_error(),
+                'raw_data' => substr($data, 0, 500) // Log first 500 chars
+            ]);
+            throw new \Exception('Invalid JSON data: ' . json_last_error_msg());
         }
         return $webhookData;
     }

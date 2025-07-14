@@ -160,17 +160,17 @@ define(
                                 {
                                     display_name: "Address",
                                     variable_name: "address",
-                                    value: paymentData.street[0] + ", " + paymentData.street[1]
+                                    value: paymentData.street ? paymentData.street.join(', ') : ''
                                 },
                                 {
                                     display_name: "Postal Code",
                                     variable_name: "postal_code",
-                                    value: paymentData.postcode
+                                    value: paymentData.postcode || ''
                                 },
                                 {
                                     display_name: "City",
                                     variable_name: "city",
-                                    value: paymentData.city + ", " + paymentData.countryId
+                                    value: (paymentData.city || '') + ", " + (paymentData.countryId || '')
                                 },
                                 {
                                     display_name: "Plugin",
@@ -179,7 +179,7 @@ define(
                                 }
                             ],
                             klump_plugin_source: 'magento',
-                            klump_plugin_version: '1.0.1',
+                            klump_plugin_version: '1.0.2',
                         },
                         items: items
                     },

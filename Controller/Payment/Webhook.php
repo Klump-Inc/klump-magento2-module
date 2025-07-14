@@ -91,14 +91,13 @@ class Webhook extends Action implements CsrfAwareActionInterface
                     }
                     break;
 
-                case 'klump.payment.transaction.failed':
-                    if ($order->getStatus() == 'pending') {
-                        $order->setState(Order::STATE_CANCELED)
-                            ->addStatusToHistory(Order::STATE_CANCELED, __("Klump BNPL Payment Failed"), true)
-                            ->setCanSendNewEmailFlag(true)
-                            ->setCustomerNoteNotify(true);
-                        $this->orderRepository->save($order);
-                    }
+                case 'klump.payment.transaction.abandoned':
+                    $order->setState(Order::STATE_CANCELED)
+                        ->addStatusToHistory(Order::STATE_CANCELED, __("Klump BNPL Payment Cancelled/Abandoned"), true)
+                        ->addStatusToHistory(Order::STATE_CANCELED, __("Klump BNPL Payment Failed"), true)
+                        ->setCanSendNewEmailFlag(false)
+                        ->setCustomerNoteNotify(true);
+                    $this->orderRepository->save($order);
                     break;
 
                 default:

@@ -15,13 +15,12 @@ class ConfigProvider implements ConfigProviderInterface
 
     public function __construct(
         CheckoutSession $checkoutSession,
-        PaymentHelper $paymentHelper,
-        Store $store
-    )
-    {
-        $this->method = $paymentHelper->getMethodInstance(\Klump\Payment\Model\BnplPayment::CODE);
+        PaymentHelper   $paymentHelper,
+        Store           $store
+    ) {
+        $this->method          = $paymentHelper->getMethodInstance(\Klump\Payment\Model\BnplPayment::CODE);
         $this->checkoutSession = $checkoutSession;
-        $this->store = $store;
+        $this->store           = $store;
     }
 
     /**
@@ -34,16 +33,18 @@ class ConfigProvider implements ConfigProviderInterface
         return [
             'payment' => [
                 \Klump\Payment\Model\BnplPayment::CODE => [
-                    'public_key' => $this->getPublicKey(),
-                ]
+                    'public_key'         => $this->getPublicKey(),
+                    'recreate_quote_url' => $this->store->getBaseUrl() . 'klump/payment/recreate',
+                ],
             ],
-//            'quoteData' => [
-//                'entity_id' => $this->checkoutSession->getQuote()->getId()
-//            ],
+            //            'quoteData' => [
+            //                'entity_id' => $this->checkoutSession->getQuote()->getId()
+            //            ],
         ];
     }
 
-    public function getStore() {
+    public function getStore()
+    {
         return $this->store;
     }
 
@@ -57,7 +58,8 @@ class ConfigProvider implements ConfigProviderInterface
         return $this->method->getConfigData('test_mode') ? $this->method->getConfigData('test_secret_key') : $this->method->getConfigData('secret_key');
     }
 
-    public function getPublicKey(){
+    public function getPublicKey()
+    {
         return $this->method->getConfigData('test_mode') ? $this->method->getConfigData('test_public_key') : $this->method->getConfigData('public_key');
     }
 }

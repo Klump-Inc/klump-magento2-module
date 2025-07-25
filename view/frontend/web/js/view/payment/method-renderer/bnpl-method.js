@@ -19,7 +19,7 @@ define(
         fullScreenLoader,
         redirectOnSuccessAction,
         klumpConfig,
-        url,
+        mageUrl,
     ) {
         'use strict';
 
@@ -70,6 +70,11 @@ define(
                 return false;
             },
 
+            redirectToCustomAction: function (url) {
+                fullScreenLoader.startLoader();
+                window.location.replace(mageUrl.build(url));
+            },
+
             afterPlaceOrder: function () {
                 // Empty function as we're handling everything in processKlumpPayment
             },
@@ -92,7 +97,7 @@ define(
                     this.messageContainer.addErrorMessage({
                         message: "Your session has expired. Please refresh the page and try again."
                     });
-                    window.location.reload();
+                    this.redirectToCustomAction(klumpConfig.recreate_quote_url);
                     return;
                 }
 
@@ -232,6 +237,9 @@ define(
                                 _this.messageContainer.addErrorMessage({
                                     message: "Payment failed. Order #" + orderId + " has been created for follow-up."
                                 });
+
+                                // Optional: Redirect to cart after a delay to allow retry
+                                _this.redirectToCustomAction(klumpConfig.recreate_quote_url);
                             })
                             .fail(function (response) {
                                 // Handle quote expiration specifically
@@ -254,7 +262,7 @@ define(
                     onLoad: (data) => {},
                     onOpen: (data) => {},
                     onClose: (data) => {
-                        _this.isPlaceOrderActionAllowed(true);
+                        _this.redirectToCustomAction(klumpConfig.recreate_quote_url);
                     }
                 }
 

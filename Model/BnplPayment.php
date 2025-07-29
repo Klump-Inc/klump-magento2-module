@@ -4,6 +4,7 @@ namespace Klump\Payment\Model;
 
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Payment\Model\InfoInterface;
+use Magento\Sales\Model\Order;
 
 class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
 {
@@ -30,7 +31,15 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
             throw new LocalizedException(__('The authorize action is not available.'));
         }
 
-        // Place your authorization logic here
+        // Set order to pending payment status initially
+        $order = $payment->getOrder();
+        $order->setState(Order::STATE_PENDING_PAYMENT);
+        $order->setStatus('pending_payment');
+        $order->addStatusToHistory(
+            'pending_payment',
+            __('Order created. Awaiting Klump payment confirmation.'),
+            false
+        );
 
         return $this;
     }

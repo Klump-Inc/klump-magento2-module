@@ -281,10 +281,6 @@ define(
             handlePaymentSuccess: function({ data }) {
                 this.isPlaceOrderActionAllowed(true);
 
-                console.log('handlePaymentSuccess', data);
-
-                console.log('data.data.reference', data.data.data.reference);
-
                 // Update order status to processing
                 if (this.currentOrderId) {
                     $.ajax({
@@ -300,34 +296,17 @@ define(
                             } else {
                                 console.error('Failed to update order status:', response.message);
                             }
-                            // Redirect regardless of status update result
-                            redirectOnSuccessAction.execute();
                         },
                         error: function(xhr, status, error) {
                             console.error('Error updating order status:', error);
-                            // Redirect even if there's an error
-                            redirectOnSuccessAction.execute();
                         }
                     });
                 } else {
                     console.error('No order ID available for status update');
-                    redirectOnSuccessAction.execute();
                 }
 
-                // redirectOnSuccessAction.execute();
-
-                // if (!this.validateQuoteBeforeOrder()) {
-                //     return;
-                // }
-
-                // var self = this;
-                // placeOrderAction(this.getData())
-                //     .done(function () {
-                //         redirectOnSuccessAction.execute();
-                //     })
-                //     .fail(function (response) {
-                //         self.handleOrderPlacementError(response);
-                //     });
+                // Redirect regardless of status update result
+                redirectOnSuccessAction.execute();
             },
 
             /**
@@ -343,19 +322,6 @@ define(
                 setTimeout(function() {
                     window.location.href = mageUrl.build('sales/order/history/');
                 }, 3000);
-
-                // var self = this;
-                // // Create order even for failed payments
-                // placeOrderAction(this.getData())
-                //     .done(function (orderId) {
-                //         self.showError("Payment failed. Order #" + orderId + " has been created for follow-up.");
-                //         self.redirectToCustomAction(window.checkoutConfig.payment.bnpl.recreate_quote_url);
-                //     })
-                //     .fail(function (response) {
-                //         self.handleOrderPlacementError(response, "Payment failed and order could not be created: ");
-                //     });
-
-                // this.isPlaceOrderActionAllowed(true);
             },
 
             /**
@@ -364,19 +330,6 @@ define(
              */
             handlePaymentClose: function(data) {
                 this.isPlaceOrderActionAllowed(true);
-            },
-
-            /**
-             * Validate quote before placing order
-             * @returns {boolean}
-             */
-            validateQuoteBeforeOrder: function() {
-                if (!quote.getQuoteId()) {
-                    this.showError("Your session has expired. Please refresh the page and try again.");
-                    window.location.reload();
-                    return false;
-                }
-                return true;
             },
 
             /**
@@ -451,16 +404,6 @@ define(
                         self.handleOrderPlacementError(response);
                         self.isPlaceOrderActionAllowed(true);
                     });
-
-                // try {
-                //     // Build and execute payment
-                //     var payload = this.buildPaymentPayload(customerInfo);
-                //     new Klump(payload);
-                // } catch (error) {
-                //     console.error('Error initializing Klump payment:', error);
-                //     this.isPlaceOrderActionAllowed(true);
-                //     this.showError("Failed to initialize payment. Please check your configuration and try again.");
-                // }
             }
         });
     }

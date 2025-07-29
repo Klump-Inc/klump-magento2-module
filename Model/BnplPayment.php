@@ -26,26 +26,6 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
         return parent::isAvailable($quote);
     }
 
-    // Add this method if it does not exist
-    // public function authorize(InfoInterface $payment, $amount)
-    // {
-    //     if (!$this->canAuthorize()) {
-    //         throw new LocalizedException(__('The authorize action is not available.'));
-    //     }
-
-    //     // Set order to pending payment status initially
-    //     $order = $payment->getOrder();
-    //     $order->setState(Order::STATE_PENDING_PAYMENT);
-    //     $order->setStatus('pending_payment');
-    //     $order->addStatusToHistory(
-    //         'pending_payment',
-    //         __('Order created. Awaiting Klump payment confirmation.'),
-    //         false
-    //     );
-
-    //     return $this;
-    // }
-
     /**
      * Initialize payment method
      * This method is called when _isInitializeNeeded = true
@@ -55,7 +35,7 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
         $stateObject->setState(\Magento\Sales\Model\Order::STATE_PENDING_PAYMENT);
         $stateObject->setStatus('pending_payment');
         $stateObject->setIsNotified(false);
-        
+
         return $this;
     }
 

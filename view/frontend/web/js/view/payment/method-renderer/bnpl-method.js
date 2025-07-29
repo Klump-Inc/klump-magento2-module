@@ -170,7 +170,7 @@ define(
                 if (!checkoutConfig.quoteItemData || !checkoutConfig.quoteItemData[0]) {
                     throw new Error('Quote data not available');
                 }
-                
+
                 var { paymentData, customerData } = customerInfo;
                 var quoteId = checkoutConfig.quoteItemData[0].quote_id;
                 var baseUrl = window.location.origin;
@@ -278,23 +278,35 @@ define(
              * Handle successful payment
              * @param {Object} data
              */
-            handlePaymentSuccess: function(data) {
+            handlePaymentSuccess: function({ data }) {
                 this.isPlaceOrderActionAllowed(true);
 
+                // Update order status to processing
+                if (this.currentOrderId) {
+                    $.ajax({
+                        url: mageUrl.build('klump/payment/updateStatus'),
+                        type: 'POST',
+                        data: {
+                            order_id: this.currentOrderId,
+                            transaction_id: data.data.data.reference || ''
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                console.log('Order status updated successfully');
+                            } else {
+                                console.error('Failed to update order status:', response.message);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Error updating order status:', error);
+                        }
+                    });
+                } else {
+                    console.error('No order ID available for status update');
+                }
+
+                // Redirect regardless of status update result
                 redirectOnSuccessAction.execute();
-
-                // if (!this.validateQuoteBeforeOrder()) {
-                //     return;
-                // }
-
-                // var self = this;
-                // placeOrderAction(this.getData())
-                //     .done(function () {
-                //         redirectOnSuccessAction.execute();
-                //     })
-                //     .fail(function (response) {
-                //         self.handleOrderPlacementError(response);
-                //     });
             },
 
             /**
@@ -305,24 +317,11 @@ define(
                 this.isPlaceOrderActionAllowed(true);
 
                 this.showError("Payment failed. Your order has been created and will be updated based on payment status.");
-    
+
                 // Optionally redirect to order view or cart
                 setTimeout(function() {
                     window.location.href = mageUrl.build('sales/order/history/');
                 }, 3000);
-
-                // var self = this;
-                // // Create order even for failed payments
-                // placeOrderAction(this.getData())
-                //     .done(function (orderId) {
-                //         self.showError("Payment failed. Order #" + orderId + " has been created for follow-up.");
-                //         self.redirectToCustomAction(window.checkoutConfig.payment.bnpl.recreate_quote_url);
-                //     })
-                //     .fail(function (response) {
-                //         self.handleOrderPlacementError(response, "Payment failed and order could not be created: ");
-                //     });
-
-                // this.isPlaceOrderActionAllowed(true);
             },
 
             /**
@@ -331,19 +330,6 @@ define(
              */
             handlePaymentClose: function(data) {
                 this.isPlaceOrderActionAllowed(true);
-            },
-
-            /**
-             * Validate quote before placing order
-             * @returns {boolean}
-             */
-            validateQuoteBeforeOrder: function() {
-                if (!quote.getQuoteId()) {
-                    this.showError("Your session has expired. Please refresh the page and try again.");
-                    window.location.reload();
-                    return false;
-                }
-                return true;
             },
 
             /**
@@ -399,14 +385,14 @@ define(
                     .done(function (orderId) {
                         // Store order ID for later use
                         self.currentOrderId = orderId;
-                        
+
                         // Now process payment with order ID
                         try {
                             var payload = self.buildPaymentPayload(customerInfo);
                             // Add order ID to payload metadata
                             payload.data.meta_data.order_id = orderId;
                             payload.data.meta_data.merchant_reference = orderId;
-                            
+
                             new Klump(payload);
                         } catch (error) {
                             console.error('Error initializing Klump payment:', error);
@@ -418,16 +404,6 @@ define(
                         self.handleOrderPlacementError(response);
                         self.isPlaceOrderActionAllowed(true);
                     });
-
-                // try {
-                //     // Build and execute payment
-                //     var payload = this.buildPaymentPayload(customerInfo);
-                //     new Klump(payload);
-                // } catch (error) {
-                //     console.error('Error initializing Klump payment:', error);
-                //     this.isPlaceOrderActionAllowed(true);
-                //     this.showError("Failed to initialize payment. Please check your configuration and try again.");
-                // }
             }
         });
     }

@@ -7,10 +7,10 @@ use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\CsrfAwareActionInterface;
+use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\Request\InvalidRequestException;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
-use Magento\Framework\App\Request\Http;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Email\Sender\OrderSender;
@@ -29,32 +29,32 @@ class Webhook extends Action implements CsrfAwareActionInterface
     private $searchCriteriaBuilder;
 
     public function __construct(
-        Context $context,
-        JsonFactory $resultJsonFactory,
-        Http $request,
-        LoggerInterface $logger,
-        ConfigProvider $configProvider,
-        OrderRepository $orderRepository,
-        OrderInterface $orderInterface,
-        OrderSender $orderSender,
+        Context               $context,
+        JsonFactory           $resultJsonFactory,
+        Http                  $request,
+        LoggerInterface       $logger,
+        ConfigProvider        $configProvider,
+        OrderRepository       $orderRepository,
+        OrderInterface        $orderInterface,
+        OrderSender           $orderSender,
         SearchCriteriaBuilder $searchCriteriaBuilder,
     ) {
         parent::__construct($context);
-        $this->resultJsonFactory = $resultJsonFactory;
-        $this->request = $request;
-        $this->logger = $logger;
-        $this->configProvider = $configProvider;
-        $this->orderRepository = $orderRepository;
-        $this->orderInterface = $orderInterface;
-        $this->orderSender = $orderSender;
+        $this->resultJsonFactory     = $resultJsonFactory;
+        $this->request               = $request;
+        $this->logger                = $logger;
+        $this->configProvider        = $configProvider;
+        $this->orderRepository       = $orderRepository;
+        $this->orderInterface        = $orderInterface;
+        $this->orderSender           = $orderSender;
         $this->searchCriteriaBuilder = $searchCriteriaBuilder;
     }
 
     public function execute()
     {
         $resultJson = $this->resultJsonFactory->create();
-        $data = $this->getRequest()->getContent();
-        $signature = $this->getRequest()->getHeader('X-Klump-Signature'); // Fetch the X-Klump-Signature header
+        $data       = $this->getRequest()->getContent();
+        $signature  = $this->getRequest()->getHeader('X-Klump-Signature'); // Fetch the X-Klump-Signature header
 
         // Verify the received X-Klump-Signature
         if (!$this->verifySignature($data, $signature)) {
@@ -64,17 +64,17 @@ class Webhook extends Action implements CsrfAwareActionInterface
 
         try {
             $webhookData = $this->validateWebhookData($data);
-            $order = $this->getOrder($webhookData);
+            $order       = $this->getOrder($webhookData);
 
             $this->logger->info('Order status', ['status' => $order->getStatus(), 'order_id' => $order->getId()]);
 
             switch ($webhookData['event']) {
                 case 'klump.payment.transaction.successful':
                     $this->logger->info('Klump Webhook: Processing successful payment', [
-                        'order_id' => $order->getId(),
-                        'before_status' => $order->getStatus()
+                        'order_id'      => $order->getId(),
+                        'before_status' => $order->getStatus(),
                     ]);
-                    if ($order->getStatus() == 'pending') {
+                    if ($order->getStatus() == 'pending_payment') {
                         $order->setState(Order::STATE_PROCESSING)
                             ->addStatusToHistory(Order::STATE_PROCESSING, __('Klump BNPL Payment Verified and Order is being processed'), true)
                             ->setCanSendNewEmailFlag(true)
@@ -103,8 +103,8 @@ class Webhook extends Action implements CsrfAwareActionInterface
 
                 default:
                     $this->logger->error('Klump Webhook: Unhandled event type', [
-                        'event' => $webhookData['event'],
-                        'available_data' => array_keys($webhookData)
+                        'event'          => $webhookData['event'],
+                        'available_data' => array_keys($webhookData),
                     ]);
                     return $resultJson->setData(['success' => false, 'message' => 'Unhandled event type']);
             }
@@ -146,9 +146,9 @@ class Webhook extends Action implements CsrfAwareActionInterface
         $webhookData = json_decode($data, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->logger->error('Klump Webhook: JSON parsing error', [
-                'json_error' => json_last_error_msg(),
+                'json_error'      => json_last_error_msg(),
                 'json_error_code' => json_last_error(),
-                'raw_data' => substr($data, 0, 500) // Log first 500 chars
+                'raw_data'        => substr($data, 0, 500), // Log first 500 chars
             ]);
             throw new \Exception('Invalid JSON data: ' . json_last_error_msg());
         }
@@ -171,7 +171,7 @@ class Webhook extends Action implements CsrfAwareActionInterface
             $searchCriteria = $this->searchCriteriaBuilder
                 ->addFilter('quote_id', $webhookData['data']['meta_data']['quote_id'], 'eq')
                 ->create();
-            $orders = $this->orderRepository->getList($searchCriteria)->getItems();
+            $orders         = $this->orderRepository->getList($searchCriteria)->getItems();
 
             if (count($orders) === 1) {
                 $order = reset($orders);

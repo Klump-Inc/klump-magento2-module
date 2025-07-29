@@ -12,11 +12,13 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
     protected $_code = self::CODE;
 
     protected $_isOffline = true;
-    protected $_canAuthorize = true;
+    protected $_canAuthorize = false;
     protected $_canCapture = true;
     protected $_canCapturePartial = false;
     protected $_canRefund = false;
     protected $_canVoid = true;
+    protected $_canOrder = true;
+    protected $_isInitializeNeeded = true;
 
     public function isAvailable(
         \Magento\Quote\Api\Data\CartInterface $quote = null
@@ -25,16 +27,55 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
     }
 
     // Add this method if it does not exist
-    public function authorize(InfoInterface $payment, $amount)
-    {
-        if (!$this->canAuthorize()) {
-            throw new LocalizedException(__('The authorize action is not available.'));
-        }
+    // public function authorize(InfoInterface $payment, $amount)
+    // {
+    //     if (!$this->canAuthorize()) {
+    //         throw new LocalizedException(__('The authorize action is not available.'));
+    //     }
 
-        // Set order to pending payment status initially
+    //     // Set order to pending payment status initially
+    //     $order = $payment->getOrder();
+    //     $order->setState(Order::STATE_PENDING_PAYMENT);
+    //     $order->setStatus('pending_payment');
+    //     $order->addStatusToHistory(
+    //         'pending_payment',
+    //         __('Order created. Awaiting Klump payment confirmation.'),
+    //         false
+    //     );
+
+    //     return $this;
+    // }
+
+    /**
+     * Initialize payment method
+     * This method is called when _isInitializeNeeded = true
+     */
+    public function initialize($paymentAction, $stateObject)
+    {
+        $stateObject->setState(\Magento\Sales\Model\Order::STATE_PENDING_PAYMENT);
+        $stateObject->setStatus('pending_payment');
+        $stateObject->setIsNotified(false);
+        
+        return $this;
+    }
+
+    /**
+     * Override to ensure Magento uses the 'order' action
+     */
+    public function getConfigPaymentAction()
+    {
+        return 'order';
+    }
+
+    public function order(InfoInterface $payment, $amount)
+    {
         $order = $payment->getOrder();
         $order->setState(Order::STATE_PENDING_PAYMENT);
         $order->setStatus('pending_payment');
+
+        $order->setCanSendNewEmailFlag(false);
+        $order->setEmailSent(true);
+
         $order->addStatusToHistory(
             'pending_payment',
             __('Order created. Awaiting Klump payment confirmation.'),
@@ -44,9 +85,14 @@ class BnplPayment extends \Magento\Payment\Model\Method\AbstractMethod
         return $this;
     }
 
-    public function canAuthorize()
+    public function canOrder()
     {
         return true;
+    }
+
+    public function canAuthorize()
+    {
+        return false;
     }
 
     public function getOrderPlaceRedirectUrl()

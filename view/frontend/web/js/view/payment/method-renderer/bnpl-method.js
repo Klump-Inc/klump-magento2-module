@@ -165,6 +165,12 @@ define(
             buildPaymentPayload: function(customerInfo) {
                 var checkoutConfig = window.checkoutConfig;
                 var klumpConfig = checkoutConfig.payment.bnpl;
+
+                // Add null checks
+                if (!checkoutConfig.quoteItemData || !checkoutConfig.quoteItemData[0]) {
+                    throw new Error('Quote data not available');
+                }
+                
                 var { paymentData, customerData } = customerInfo;
                 var quoteId = checkoutConfig.quoteItemData[0].quote_id;
                 var baseUrl = window.location.origin;
@@ -243,7 +249,7 @@ define(
              * @param {Object} paymentData
              */
             addPhoneNumber: function(payload, paymentData) {
-                if (paymentData.telephone) {
+                if (paymentData.telephone && paymentData.telephone.length >= 11) {
                     if (paymentData.telephone.length > 11) {
                         payload.data.phone = '0' + paymentData.telephone.substring(paymentData.telephone.length - 10);
                     } else {
@@ -275,18 +281,20 @@ define(
             handlePaymentSuccess: function(data) {
                 this.isPlaceOrderActionAllowed(true);
 
-                if (!this.validateQuoteBeforeOrder()) {
-                    return;
-                }
+                redirectOnSuccessAction.execute();
 
-                var self = this;
-                placeOrderAction(this.getData())
-                    .done(function () {
-                        redirectOnSuccessAction.execute();
-                    })
-                    .fail(function (response) {
-                        self.handleOrderPlacementError(response);
-                    });
+                // if (!this.validateQuoteBeforeOrder()) {
+                //     return;
+                // }
+
+                // var self = this;
+                // placeOrderAction(this.getData())
+                //     .done(function () {
+                //         redirectOnSuccessAction.execute();
+                //     })
+                //     .fail(function (response) {
+                //         self.handleOrderPlacementError(response);
+                //     });
             },
 
             /**
@@ -294,22 +302,27 @@ define(
              * @param {Object} data
              */
             handlePaymentError: function(data) {
-                if (!this.validateQuoteBeforeOrder()) {
-                    return;
-                }
-
-                var self = this;
-                // Create order even for failed payments
-                placeOrderAction(this.getData())
-                    .done(function (orderId) {
-                        self.showError("Payment failed. Order #" + orderId + " has been created for follow-up.");
-                        self.redirectToCustomAction(window.checkoutConfig.payment.bnpl.recreate_quote_url);
-                    })
-                    .fail(function (response) {
-                        self.handleOrderPlacementError(response, "Payment failed and order could not be created: ");
-                    });
-
                 this.isPlaceOrderActionAllowed(true);
+
+                this.showError("Payment failed. Your order has been created and will be updated based on payment status.");
+    
+                // Optionally redirect to order view or cart
+                setTimeout(function() {
+                    window.location.href = mageUrl.build('sales/order/history/');
+                }, 3000);
+
+                // var self = this;
+                // // Create order even for failed payments
+                // placeOrderAction(this.getData())
+                //     .done(function (orderId) {
+                //         self.showError("Payment failed. Order #" + orderId + " has been created for follow-up.");
+                //         self.redirectToCustomAction(window.checkoutConfig.payment.bnpl.recreate_quote_url);
+                //     })
+                //     .fail(function (response) {
+                //         self.handleOrderPlacementError(response, "Payment failed and order could not be created: ");
+                //     });
+
+                // this.isPlaceOrderActionAllowed(true);
             },
 
             /**
@@ -379,14 +392,42 @@ define(
                 // Disable place order button
                 this.isPlaceOrderActionAllowed(false);
 
-                try {
-                    // Build and execute payment
-                    var payload = this.buildPaymentPayload(customerInfo);
-                    new Klump(payload);
-                } catch (error) {
-                    this.isPlaceOrderActionAllowed(true);
-                    this.showError("Failed to initialize payment. Please check your configuration and try again.");
-                }
+                var self = this;
+
+                // CREATE ORDER FIRST - before payment processing
+                placeOrderAction(this.getData())
+                    .done(function (orderId) {
+                        // Store order ID for later use
+                        self.currentOrderId = orderId;
+                        
+                        // Now process payment with order ID
+                        try {
+                            var payload = self.buildPaymentPayload(customerInfo);
+                            // Add order ID to payload metadata
+                            payload.data.meta_data.order_id = orderId;
+                            payload.data.meta_data.merchant_reference = orderId;
+                            
+                            new Klump(payload);
+                        } catch (error) {
+                            console.error('Error initializing Klump payment:', error);
+                            self.isPlaceOrderActionAllowed(true);
+                            self.showError("Failed to initialize payment. Please check your configuration and try again.");
+                        }
+                    })
+                    .fail(function (response) {
+                        self.handleOrderPlacementError(response);
+                        self.isPlaceOrderActionAllowed(true);
+                    });
+
+                // try {
+                //     // Build and execute payment
+                //     var payload = this.buildPaymentPayload(customerInfo);
+                //     new Klump(payload);
+                // } catch (error) {
+                //     console.error('Error initializing Klump payment:', error);
+                //     this.isPlaceOrderActionAllowed(true);
+                //     this.showError("Failed to initialize payment. Please check your configuration and try again.");
+                // }
             }
         });
     }

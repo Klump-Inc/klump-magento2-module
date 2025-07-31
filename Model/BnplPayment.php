@@ -2,7 +2,6 @@
 
 namespace Klump\Payment\Model;
 
-use Magento\Framework\Exception\LocalizedException;
 use Magento\Payment\Model\InfoInterface;
 use Magento\Sales\Model\Order;
 

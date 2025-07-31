@@ -147,10 +147,18 @@ define(
                 var cartItems = quote.getItems();
 
                 return cartItems.map(function(item) {
+                    // Ensure qty is a valid number and greater than 0
+                    var quantity = parseInt(item.qty) || 1;
+                    var rowTotal = parseFloat(item.row_total_incl_tax) || 0;
+                    var discountAmount = parseFloat(item.discount_amount) || 0;
+                    
+                    // Calculate unit price safely
+                    var unitPrice = quantity > 0 ? (rowTotal - discountAmount) / quantity : 0;
+                    
                     return {
                         name: item.name,
-                        unit_price: (parseFloat(item.row_total_incl_tax) - parseFloat(item.discount_amount)) / item.qty,
-                        quantity: item.qty,
+                        unit_price: Math.max(0, unitPrice), // Ensure non-negative price
+                        quantity: quantity,
                         image_url: item.thumbnail,
                         item_url: baseUrl + item.product.request_path,
                     };
@@ -316,12 +324,22 @@ define(
             handlePaymentError: function(data) {
                 this.isPlaceOrderActionAllowed(true);
 
-                this.showError("Payment failed. Your order has been created and will be updated based on payment status.");
+                var checkoutConfig = window.checkoutConfig;
+                var errorMessage = "Payment failed. ";
 
-                // Optionally redirect to order view or cart
-                setTimeout(function() {
-                    window.location.href = mageUrl.build('sales/order/history/');
-                }, 3000);
+                if (this.currentOrderId) {
+                    if (checkoutConfig.isCustomerLoggedIn) {
+                        // For logged-in users, they can access order history
+                        errorMessage += "Your order #" + this.currentOrderId + " has been created but payment was not successful. You can retry payment from your order history or try again below.";
+                    } else {
+                        // For guest users, provide order details and retry option
+                        errorMessage += "Your order #" + this.currentOrderId + " has been created but payment was not successful. Please try the payment again below, or contact support with your order number.";
+                    }
+                } else {
+                    errorMessage += "Please try again or contact support if the issue persists.";
+                }
+                
+                this.showError(errorMessage);
             },
 
             /**
@@ -330,6 +348,19 @@ define(
              */
             handlePaymentClose: function(data) {
                 this.isPlaceOrderActionAllowed(true);
+
+                if (this.currentOrderId) {
+                    var checkoutConfig = window.checkoutConfig;
+                    var message = "Payment was cancelled. Your order #" + this.currentOrderId + " has been created but is pending payment.";
+                    
+                    if (checkoutConfig.isCustomerLoggedIn) {
+                        message += " You can complete the payment later from your order history or try again below.";
+                    } else {
+                        message += " Please try the payment again below, or contact support with your order number.";
+                    }
+                    
+                    this.showError(message);
+                }
             },
 
             /**

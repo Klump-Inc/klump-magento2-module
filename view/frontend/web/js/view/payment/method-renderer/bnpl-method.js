@@ -151,10 +151,10 @@ define(
                     var quantity = parseInt(item.qty) || 1;
                     var rowTotal = parseFloat(item.row_total_incl_tax) || 0;
                     var discountAmount = parseFloat(item.discount_amount) || 0;
-                    
+
                     // Calculate unit price safely
                     var unitPrice = quantity > 0 ? (rowTotal - discountAmount) / quantity : 0;
-                    
+
                     return {
                         name: item.name,
                         unit_price: Math.max(0, unitPrice), // Ensure non-negative price
@@ -195,7 +195,7 @@ define(
                             quote_id: quoteId,
                             custom_fields: this.buildCustomFields(paymentData, quoteId),
                             klump_plugin_source: 'magento',
-                            klump_plugin_version: '1.0.4',
+                            klump_plugin_version: '1.1.0',
                         },
                         items: this.buildPaymentItems()
                     },
@@ -338,7 +338,7 @@ define(
                 } else {
                     errorMessage += "Please try again or contact support if the issue persists.";
                 }
-                
+
                 this.showError(errorMessage);
             },
 
@@ -352,13 +352,13 @@ define(
                 if (this.currentOrderId) {
                     var checkoutConfig = window.checkoutConfig;
                     var message = "Payment was cancelled. Your order #" + this.currentOrderId + " has been created but is pending payment.";
-                    
+
                     if (checkoutConfig.isCustomerLoggedIn) {
                         message += " You can complete the payment later from your order history or try again below.";
                     } else {
                         message += " Please try the payment again below, or contact support with your order number.";
                     }
-                    
+
                     this.showError(message);
                 }
             },
